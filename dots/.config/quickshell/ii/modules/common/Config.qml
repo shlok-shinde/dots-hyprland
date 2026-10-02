@@ -137,6 +137,15 @@ Singleton {
                     property string type: "auto" // Allowed: auto, scheme-content, scheme-expressive, scheme-fidelity, scheme-fruit-salad, scheme-monochrome, scheme-neutral, scheme-rainbow, scheme-tonal-spot
                     property string accentColor: ""
                 }
+                // Liquid glass: surfaces become nearly clear and drop their own shadow and
+                // border, leaving the material (refraction, rim light) to the compositor's
+                // glass plugin, which shapes it from whatever alpha the shell draws.
+                property JsonObject liquidGlass: JsonObject {
+                    property bool enable: false
+                    property real tint: 0.10              // opacity of panel backgrounds over the glass
+                    property real contentTransparency: 0.78 // inner groups: how clear they stay
+                    property string accentColor: "#D71921" // the one red
+                }
             }
 
             property JsonObject audio: JsonObject {
