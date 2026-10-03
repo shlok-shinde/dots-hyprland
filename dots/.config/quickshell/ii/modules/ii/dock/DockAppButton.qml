@@ -82,22 +82,12 @@ DockButton {
     Component.onDestruction: if (!isSeparator) Genie.unregisterIcon(appToplevel.appId, iconRectProvider)
 
     onClicked: {
-        if (appToplevel.toplevels.length === 0) {
-            root.desktopEntry?.execute();
-            return;
-        }
-        // A minimized window comes back out of this icon before anything else gets focus.
-        const minimized = appToplevel.toplevels.filter(t => Genie.isMinimized(t));
-        if (minimized.length > 0) {
-            Genie.restoreToplevel(minimized[minimized.length - 1], root.globalIconRect());
-            return;
-        }
-        lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
-        appToplevel.toplevels[lastFocused].activate()
+        lastFocused = (lastFocused + 1) % Math.max(1, appToplevel.toplevels.length);
+        Genie.clickApp(appToplevel, root.desktopEntry, root.globalIconRect(), lastFocused);
     }
 
     middleClickAction: () => {
-        root.desktopEntry?.execute();
+        Genie.launch(root.desktopEntry, appToplevel.appId, root.globalIconRect());
     }
 
     altAction: () => {
