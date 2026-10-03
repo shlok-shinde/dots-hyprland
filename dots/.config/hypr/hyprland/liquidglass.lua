@@ -12,32 +12,44 @@ if is_file_exists(plugin) then
     hl.plugin.load(plugin)
 end
 
+-- Settings > Liquid glass in the shell (on/off, Clear / Tinted, edge
+-- highlights), written by quickshell/ii/services/LiquidGlass.qml
+local function shellSettings()
+    local path = (os.getenv("XDG_STATE_HOME") or (HOME .. "/.local/state")) .. "/quickshell/user/generated/liquidglass.lua"
+    if not is_file_exists(path) then return {} end
+    local ok, settings = pcall(dofile, path)
+    return (ok and type(settings) == "table") and settings or {}
+end
+
 -- Loading is asynchronous: this block applies on the reload the plugin triggers.
 if hl.plugin.hyprglass then
     local hg = hl.plugin.hyprglass
 
-    -- Every app window is glass. It shows wherever the app draws a see-through
-    -- background: kitty and foot (background_opacity / alpha), and Qt apps
-    -- through the Darkly style (Dolphin's view and sidebar, toolbars, menus).
+    -- Every app window is glass, the same clear glass as the dock. It shows
+    -- wherever the app draws a see-through background: kitty and foot
+    -- (background_opacity / alpha), and Qt apps through the Darkly style
+    -- (Dolphin's view and sidebar, toolbars, menus).
+    local shell = shellSettings()
     hg.config({
         default_theme = "dark",
-        default_preset = "tahoe_window",
-        layers = { enabled = true },
+        default_preset = "tahoe_clear",
+        enabled = shell.enabled ~= false,
+        layers = { enabled = shell.enabled ~= false },
+        tinted = shell.tinted or 0,
+        edge_highlight = shell.edge_highlight or 1,
     })
 
     -- Shell panels get glass cut to whatever shape they draw. Full-screen
-    -- layers (background, overview, session, overlay) are left alone.
-    -- Like Apple: Clear for chrome over content (bar, dock), Regular, which
-    -- frosts and tints more, for panels that are mostly text.
-    for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock" }) do
-        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
-    end
+    -- layers (background, overview, session, overlay) are left alone. Every
+    -- panel, like every window, is the same clear glass as the dock; Settings >
+    -- Liquid glass > Tinted makes all of it more opaque.
     for _, ns in ipairs({
+        "quickshell:bar", "quickshell:verticalBar", "quickshell:dock",
         "quickshell:sidebarLeft", "quickshell:sidebarRight",
         "quickshell:notificationPopup", "quickshell:onScreenDisplay",
         "quickshell:mediaControls", "quickshell:osk", "quickshell:popup",
     }) do
-        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe" })
+        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
     end
 
     -- Magic lamp: pour the focused window into its dock icon, and back.

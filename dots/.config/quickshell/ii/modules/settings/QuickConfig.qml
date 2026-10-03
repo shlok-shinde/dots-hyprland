@@ -227,6 +227,99 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "water_drop"
+        title: Translation.tr("Liquid glass")
+
+        ConfigSwitch {
+            buttonIcon: "blur_on"
+            text: Translation.tr("Liquid glass")
+            checked: Config.options.appearance.liquidGlass.enable
+            onCheckedChanged: {
+                Config.options.appearance.liquidGlass.enable = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Glass windows, bar, dock and panels, drawn by the compositor")
+            }
+        }
+
+        ContentSubsection {
+            visible: Config.options.appearance.liquidGlass.enable
+            title: Translation.tr("Look")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.appearance.liquidGlass.mode
+                onSelected: newValue => {
+                    Config.options.appearance.liquidGlass.mode = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Clear"),
+                        icon: "lens_blur",
+                        value: "clear"
+                    },
+                    {
+                        displayName: Translation.tr("Tinted"),
+                        icon: "contrast",
+                        value: "tinted"
+                    }
+                ]
+            }
+        }
+
+        ConfigSlider {
+            visible: Config.options.appearance.liquidGlass.enable && Config.options.appearance.liquidGlass.mode === "tinted"
+            text: Translation.tr("Tint")
+            buttonIcon: "opacity"
+            from: 0.1
+            to: 1
+            value: Config.options.appearance.liquidGlass.tintAmount
+            onValueChanged: {
+                Config.options.appearance.liquidGlass.tintAmount = value;
+            }
+        }
+
+        ConfigSlider {
+            visible: Config.options.appearance.liquidGlass.enable
+            text: Translation.tr("Edge highlights")
+            buttonIcon: "highlight"
+            from: 0
+            to: 2
+            stopIndicatorValues: [1]
+            value: Config.options.appearance.liquidGlass.edgeHighlight
+            onValueChanged: {
+                Config.options.appearance.liquidGlass.edgeHighlight = value;
+            }
+        }
+
+        ConfigRow {
+            visible: Config.options.appearance.liquidGlass.enable
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "toolbar"
+                text: Translation.tr("Capsule bar")
+                checked: Config.options.appearance.liquidGlass.capsuleBar
+                onCheckedChanged: {
+                    Config.options.appearance.liquidGlass.capsuleBar = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Each bar group is its own glass capsule. Off: one glass bar with a single border")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "view_agenda"
+                text: Translation.tr("Modular sidebar")
+                checked: Config.options.appearance.liquidGlass.modularSidebar
+                onCheckedChanged: {
+                    Config.options.appearance.liquidGlass.modularSidebar = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Each card of the right sidebar is its own glass, like Control Center")
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "screenshot_monitor"
         title: Translation.tr("Bar & screen")
 
