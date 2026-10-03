@@ -52,14 +52,34 @@ RippleButton {
         }
     }
 
-    CustomIcon {
+    Connections { // Hermes finished a reply while the sidebar was closed
+        target: Hermes
+        function onBusyChanged() {
+            if (!Hermes.busy && !GlobalStates.sidebarLeftOpen)
+                root.showPing = true;
+        }
+    }
+
+    Item {
         id: distroIcon
         anchors.centerIn: parent
         width: 19.5
         height: 19.5
-        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
-        colorize: true
-        color: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colOnLayer0
+
+        CustomIcon {
+            anchors.fill: parent
+            visible: !Hermes.available
+            source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
+            colorize: true
+            color: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colOnLayer0
+        }
+        MaterialSymbol { // With Hermes the sidebar is Hermes: its brain, as on the sidebar's tab
+            anchors.centerIn: parent
+            visible: Hermes.available
+            text: "neurology"
+            iconSize: 22
+            color: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colOnLayer0
+        }
 
         Rectangle {
             opacity: root.showPing ? 1 : 0
