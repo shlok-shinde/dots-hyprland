@@ -630,12 +630,24 @@ Singleton {
     }
 
     function clearEntries() {
-        const old = root.entries();
+        root.retiredEntries = [...root.retiredEntries, ...root.entries()];
         root.entryIds = [];
         root.entryById = ({});
         root.toolEntries = ({});
         root.currentPlan = null;
-        for (const entry of old)
-            entry.destroy();
+        retireTimer.restart();
+    }
+
+    // Cleared entries are destroyed a moment later, once the list's delegates
+    // (still animating out) have let go of them
+    property var retiredEntries: []
+    Timer {
+        id: retireTimer
+        interval: 2000
+        onTriggered: {
+            for (const entry of root.retiredEntries)
+                entry.destroy();
+            root.retiredEntries = [];
+        }
     }
 }
