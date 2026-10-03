@@ -37,19 +37,24 @@ if hl.plugin.hyprglass then
         layers = { enabled = shell.enabled ~= false },
         tinted = shell.tinted or 0,
         edge_highlight = shell.edge_highlight or 1,
+        lens = shell.lens or 1,
     })
 
-    -- Shell panels get glass cut to whatever shape they draw. Full-screen
-    -- layers (background, overview, session, overlay) are left alone. Every
-    -- panel, like every window, is the same clear glass as the dock; Settings >
-    -- Liquid glass > Tinted makes all of it more opaque.
+    -- Shell panels get glass cut to whatever shape they draw. The background,
+    -- session screen, overlay and screenshot selector are left alone.
+    -- Bar and dock: the clear glass. Panels that carry text (launcher and
+    -- overview, sidebars, notifications...) get the same glass frostier and
+    -- darker, so they stay readable and stand apart from what is behind them.
+    for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock" }) do
+        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
+    end
     for _, ns in ipairs({
-        "quickshell:bar", "quickshell:verticalBar", "quickshell:dock",
+        "quickshell:overview", "quickshell:cheatsheet", "quickshell:wallpaperSelector",
         "quickshell:sidebarLeft", "quickshell:sidebarRight",
         "quickshell:notificationPopup", "quickshell:onScreenDisplay",
         "quickshell:mediaControls", "quickshell:osk", "quickshell:popup",
     }) do
-        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
+        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe" })
     end
 
     -- Magic lamp: pour the focused window into its dock icon, and back.

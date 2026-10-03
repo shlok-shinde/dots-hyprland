@@ -144,13 +144,15 @@ Singleton {
                     property bool enable: false
                     property real tint: 0.10              // opacity of panel backgrounds over the glass
                     property real contentTransparency: 0.78 // inner groups: how clear they stay
-                    property string accentColor: "#D71921" // the one red
+                    property string accentColor: "#D71921" // the one red; "" = no accent (theme colours)
                     // Tahoe's Clear / Tinted switch. Tinted is more opaque and frosted;
                     // tintAmount sets how much (0.1 - 1).
                     property string mode: "clear"
                     property real tintAmount: 0.6
                     // Rim highlights where the edge reflects something bright (0 - 2)
                     property real edgeHighlight: 1.0
+                    // Refraction across the whole pane, not only its rim (0 - 2)
+                    property real refraction: 1.0
                     // capsuleBar: the bar is see-through with each group its own glass
                     // capsule (false: one glass bar with a single border).
                     // modularSidebar: the right sidebar is separate glass modules, like

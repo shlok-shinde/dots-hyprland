@@ -291,6 +291,19 @@ ContentPage {
             }
         }
 
+        ConfigSlider {
+            visible: Config.options.appearance.liquidGlass.enable
+            text: Translation.tr("Refraction")
+            buttonIcon: "lens"
+            from: 0
+            to: 2
+            stopIndicatorValues: [1]
+            value: Config.options.appearance.liquidGlass.refraction
+            onValueChanged: {
+                Config.options.appearance.liquidGlass.refraction = value;
+            }
+        }
+
         ConfigRow {
             visible: Config.options.appearance.liquidGlass.enable
             uniform: true
@@ -314,6 +327,81 @@ ContentPage {
                 }
                 StyledToolTip {
                     text: Translation.tr("Each card of the right sidebar is its own glass, like Control Center")
+                }
+            }
+        }
+
+        ContentSubsection {
+            id: accentPicker
+            title: Translation.tr("Accent colour")
+            tooltip: Translation.tr("The active workspace and the bar's glyph. None: the theme's own colours")
+            readonly property string current: Config.options.appearance.liquidGlass.accentColor
+            readonly property var swatches: [
+                { name: Translation.tr("Nothing red"), color: "#D71921" },
+                { name: Translation.tr("Orange"), color: "#FF6A13" },
+                { name: Translation.tr("Yellow"), color: "#F5C400" },
+                { name: Translation.tr("Green"), color: "#2DBE6C" },
+                { name: Translation.tr("Teal"), color: "#13B5B1" },
+                { name: Translation.tr("Blue"), color: "#2F7CF6" },
+                { name: Translation.tr("Purple"), color: "#9B5CF6" },
+                { name: Translation.tr("Pink"), color: "#F0508C" },
+                { name: Translation.tr("White"), color: "#F2F2F2" }
+            ]
+
+            RowLayout {
+                spacing: 8
+                Repeater {
+                    model: accentPicker.swatches
+                    delegate: RippleButton {
+                        id: swatch
+                        required property var modelData
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        buttonRadius: 16
+                        readonly property bool chosen: accentPicker.current.toLowerCase() === modelData.color.toLowerCase()
+                        colBackground: modelData.color
+                        colBackgroundHover: modelData.color
+                        colRipple: ColorUtils.mix(modelData.color, "#ffffff", 0.7)
+                        onClicked: Config.options.appearance.liquidGlass.accentColor = modelData.color
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            text: swatch.chosen ? "check" : ""
+                            iconSize: 18
+                            color: ColorUtils.mix(swatch.modelData.color, "#000000", 0.75)
+                        }
+                        StyledToolTip {
+                            text: swatch.modelData.name
+                        }
+                    }
+                }
+                RippleButton {
+                    id: noAccent
+                    implicitHeight: 32
+                    buttonRadius: 16
+                    toggled: accentPicker.current === ""
+                    colBackground: Appearance.colors.colLayer2
+                    onClicked: Config.options.appearance.liquidGlass.accentColor = ""
+                    contentItem: StyledText {
+                        horizontalAlignment: Text.AlignHCenter
+                        leftPadding: 10
+                        rightPadding: 10
+                        text: Translation.tr("None")
+                        color: noAccent.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                    }
+                }
+            }
+
+            MaterialTextField {
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("Custom colour, e.g. #D71921")
+                text: accentPicker.current
+                onEditingFinished: {
+                    const t = text.trim();
+                    if (t === "")
+                        Config.options.appearance.liquidGlass.accentColor = "";
+                    else if (/^#?[0-9a-fA-F]{6}$/.test(t))
+                        Config.options.appearance.liquidGlass.accentColor = t.startsWith("#") ? t.toUpperCase() : "#" + t.toUpperCase();
                 }
             }
         }

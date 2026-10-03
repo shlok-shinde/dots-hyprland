@@ -20,6 +20,7 @@ Singleton {
     readonly property bool enabled: settings.enable
     readonly property real tinted: settings.mode === "tinted" ? Math.max(0, Math.min(1, settings.tintAmount)) : 0
     readonly property real edgeHighlight: Math.max(0, settings.edgeHighlight)
+    readonly property real lens: Math.max(0, settings.refraction)
     readonly property string statePath: FileUtils.trimFileProtocol(`${Directories.state}/user/generated/liquidglass.lua`)
 
     // Called once at startup (shell.qml), which also brings the singleton up.
@@ -30,6 +31,7 @@ Singleton {
     onEnabledChanged: applyTimer.restart()
     onTintedChanged: applyTimer.restart()
     onEdgeHighlightChanged: applyTimer.restart()
+    onLensChanged: applyTimer.restart()
 
     Timer { // a slider drag sends one update, not dozens
         id: applyTimer
@@ -39,7 +41,7 @@ Singleton {
 
     function apply() {
         const on = root.enabled ? "true" : "false";
-        const fields = `enabled = ${on}, layers = { enabled = ${on} }, tinted = ${root.tinted.toFixed(3)}, edge_highlight = ${root.edgeHighlight.toFixed(3)}`;
+        const fields = `enabled = ${on}, layers = { enabled = ${on} }, tinted = ${root.tinted.toFixed(3)}, edge_highlight = ${root.edgeHighlight.toFixed(3)}, lens = ${root.lens.toFixed(3)}`;
         stateFile.setText(`-- written by the shell (Settings > Liquid glass); read by hypr/hyprland/liquidglass.lua\nreturn { ${fields} }\n`);
         Quickshell.execDetached(["hyprctl", "eval", `if hl.plugin.hyprglass then hl.plugin.hyprglass.config({ ${fields} }) end`]);
     }
@@ -47,5 +49,6 @@ Singleton {
     FileView {
         id: stateFile
         path: root.statePath
+        printErrors: false // it does not exist until the first apply()
     }
 }
