@@ -45,6 +45,20 @@ pre_process() {
         gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3'
     fi
 
+    # What doesn't read gsettings: GTK's own settings files (apps read them at
+    # start; prefer-dark has no gsettings key) and the login screen, whose mode
+    # file sddm/install.sh hands to you (the greeter can't read your home)
+    if [[ "$mode_flag" == "dark" || "$mode_flag" == "light" ]]; then
+        local prefer_dark=false gtk_theme=adw-gtk3
+        [[ "$mode_flag" == "dark" ]] && prefer_dark=true gtk_theme=adw-gtk3-dark
+        for ini in "$XDG_CONFIG_HOME"/gtk-3.0/settings.ini "$XDG_CONFIG_HOME"/gtk-4.0/settings.ini; do
+            [ -f "$ini" ] && sed -i -e "s/^gtk-application-prefer-dark-theme=.*/gtk-application-prefer-dark-theme=$prefer_dark/" \
+                -e "s/^gtk-theme-name=.*/gtk-theme-name=$gtk_theme/" "$ini"
+        done
+        local login_mode=/var/lib/nothing-liquid/login-screen.conf
+        [ -w "$login_mode" ] && printf '[General]\nmode=%s\n' "$mode_flag" > "$login_mode"
+    fi
+
     if [ ! -d "$CACHE_DIR"/user/generated ]; then
         mkdir -p "$CACHE_DIR"/user/generated
     fi
