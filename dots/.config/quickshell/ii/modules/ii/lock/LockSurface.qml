@@ -96,17 +96,121 @@ MouseArea {
     //     }
     // }
 
+    // Liquid glass. The compositor's glass can't reach a lock surface, so the
+    // lock draws the wallpaper itself and its own glass over it
+    // (LiquidGlassEffect): a glass clock and glass under the three toolbars.
+    readonly property bool liquid: Appearance.liquidGlass
+    readonly property string wallpaperPath: {
+        const path = Config.options.background.wallpaperPath;
+        const isVideo = [".mp4", ".webm", ".mkv", ".avi", ".mov"].some(ext => path.endsWith(ext));
+        return isVideo ? Config.options.background.thumbnailPath : path;
+    }
+
+    Item {
+        id: lockBackdrop
+        anchors.fill: parent
+        visible: root.liquid
+        Image {
+            anchors.fill: parent
+            source: root.liquid ? root.wallpaperPath : ""
+            fillMode: Image.PreserveAspectCrop
+            sourceSize: Qt.size(root.width, root.height)
+            cache: false
+        }
+        Rectangle { // A little darker than the desktop, like a screen at rest
+            anchors.fill: parent
+            color: "black"
+            opacity: 0.25
+        }
+    }
+
+    Loader {
+        id: liquidClockLoader
+        active: root.liquid
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            top: parent.top
+            topMargin: root.height * 0.11
+        }
+        sourceComponent: Column {
+            spacing: 2
+            StyledText { // Date, in the dot-matrix face
+                anchors.horizontalCenter: parent.horizontalCenter
+                font.family: Appearance.font.family.title
+                font.pixelSize: Math.round(root.height * 0.024)
+                color: Qt.rgba(1, 1, 1, 0.9)
+                text: DateTime.longDate
+            }
+            LiquidGlassEffect { // The time, in glass: clear and light, like the lock screen's in Tahoe
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: clockText.implicitWidth
+                height: clockText.implicitHeight
+                backdrop: lockBackdrop
+                bezel: 10
+                refraction: 16
+                bodyLens: 0
+                frost: 1.5
+                rim: 1.0
+                brightness: 1.1
+                adaptiveDim: 0.1
+                tint: Qt.rgba(1, 1, 1, 0.18)
+                dispersion: 0.2
+                shadow: 0.45
+
+                Text {
+                    // Solid strokes: dot-matrix digits would each turn into a bead of glass
+                    id: clockText
+                    text: DateTime.time
+                    color: "white"
+                    font.family: "Google Sans Flex"
+                    font.pixelSize: Math.round(root.height * 0.17)
+                    font.weight: Font.Black
+                    font.variableAxes: ({ "wght": 820 }) // it's a variable font: weight goes by axis
+                    font.letterSpacing: -2
+                }
+            }
+        }
+    }
+
+    // Glass under the toolbars (declared first so it sits behind them); the
+    // toolbars themselves go see-through in glass mode
+    component IslandGlass: LiquidGlassEffect {
+        required property Item island
+        anchors.fill: island
+        visible: root.liquid
+        scale: island.scale
+        opacity: island.opacity
+        mapTick: root.toolbarScale
+        backdrop: lockBackdrop
+        Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: "white"
+        }
+    }
+    IslandGlass {
+        island: mainIsland
+    }
+    IslandGlass {
+        island: leftIsland
+    }
+    IslandGlass {
+        island: rightIsland
+    }
+
     // Main toolbar: password box
     Toolbar {
         id: mainIsland
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: 20
+            bottomMargin: root.liquid ? root.height * 0.08 : 20
         }
         Behavior on anchors.bottomMargin {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
+        colBackground: root.liquid ? "transparent" : Appearance.m3colors.m3surfaceContainer
+        enableShadow: !root.liquid
 
         scale: root.toolbarScale
         opacity: root.toolbarOpacity
@@ -237,6 +341,8 @@ MouseArea {
             bottom: mainIsland.bottom
             rightMargin: 10
         }
+        colBackground: root.liquid ? "transparent" : Appearance.m3colors.m3surfaceContainer
+        enableShadow: !root.liquid
         scale: root.toolbarScale
         opacity: root.toolbarOpacity
 
@@ -297,6 +403,8 @@ MouseArea {
             bottom: mainIsland.bottom
             leftMargin: 10
         }
+        colBackground: root.liquid ? "transparent" : Appearance.m3colors.m3surfaceContainer
+        enableShadow: !root.liquid
 
         scale: root.toolbarScale
         opacity: root.toolbarOpacity
