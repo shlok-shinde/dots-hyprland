@@ -145,6 +145,11 @@ Singleton {
                     property real tint: 0.10              // opacity of panel backgrounds over the glass
                     property real contentTransparency: 0.78 // inner groups: how clear they stay
                     property string accentColor: "#D71921" // the one red
+                    // Like Tahoe: the bar is see-through with its groups as glass capsules
+                    // (false: one glass slab), and the right sidebar is separate glass
+                    // modules, like Control Center (false: one glass panel)
+                    property bool capsuleBar: true
+                    property bool modularSidebar: true
                 }
             }
 

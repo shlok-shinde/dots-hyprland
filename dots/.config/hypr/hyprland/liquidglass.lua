@@ -16,9 +16,12 @@ end
 if hl.plugin.hyprglass then
     local hg = hl.plugin.hyprglass
 
+    -- Every app window is glass. It shows wherever the app draws a see-through
+    -- background: kitty and foot (background_opacity / alpha), and Qt apps
+    -- through the Darkly style (Dolphin's view and sidebar, toolbars, menus).
     hg.config({
         default_theme = "dark",
-        default_preset = "tahoe_clear",
+        default_preset = "tahoe_window",
         layers = { enabled = true },
     })
 
@@ -43,6 +46,21 @@ if hl.plugin.hyprglass then
     hl.bind("SUPER + SHIFT + H", hl.dsp.exec_cmd("qs -c $qsConfig ipc call genie restoreLast"),
         { description = "Window: Restore the last minimized window" })
 end
+
+-- Floating windows sit on a big, soft shadow like Tahoe's, deeper for the
+-- focused one. (Tiled windows keep no shadow, see rules.lua.)
+hl.config({
+    decoration = {
+        shadow = {
+            enabled = true,
+            range = 46,
+            offset = { 0, 14 },
+            render_power = 3,
+            color = "rgba(00000073)",
+            color_inactive = "rgba(00000040)",
+        },
+    },
+})
 
 -- Motion: springs instead of decelerations. Panels and windows overshoot a
 -- little and settle, the gel-like give of the material; nothing bounces twice.

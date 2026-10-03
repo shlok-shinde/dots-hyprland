@@ -33,6 +33,8 @@ Singleton {
     property real autoContentTransparency: 0.9
     property bool liquidGlass: Config?.options.appearance.liquidGlass.enable ?? false
     property color accent: Config?.options.appearance.liquidGlass.accentColor ?? "#D71921"
+    property bool liquidCapsuleBar: liquidGlass && (Config?.options.appearance.liquidGlass.capsuleBar ?? true)
+    property bool liquidModularSidebar: liquidGlass && (Config?.options.appearance.liquidGlass.modularSidebar ?? true)
     property real backgroundTransparency: liquidGlass ? 1 - Config.options.appearance.liquidGlass.tint
         : Config?.options.appearance.transparency.enable ? Config?.options.appearance.transparency.automatic ? autoBackgroundTransparency : Config?.options.appearance.transparency.backgroundTransparency : 0
     property real contentTransparency: liquidGlass ? Config.options.appearance.liquidGlass.contentTransparency
