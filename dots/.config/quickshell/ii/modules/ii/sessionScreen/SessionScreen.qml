@@ -25,7 +25,7 @@ Scope {
             WlrLayershell.namespace: "quickshell:sessionScrim"
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            color: Qt.rgba(0, 0, 0, 0.45)
+            color: Qt.rgba(0, 0, 0, Appearance.m3colors.darkmode ? 0.45 : 0.22) // a light desktop only dims a little
             anchors {
                 top: true
                 left: true

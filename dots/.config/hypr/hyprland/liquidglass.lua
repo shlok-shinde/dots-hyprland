@@ -13,7 +13,8 @@ if is_file_exists(plugin) then
 end
 
 -- Settings > Liquid glass in the shell (on/off, Clear / Tinted, edge
--- highlights), written by quickshell/ii/services/LiquidGlass.qml
+-- highlights) and its light or dark mode, written by
+-- quickshell/ii/services/LiquidGlass.qml
 local function shellSettings()
     local path = (os.getenv("XDG_STATE_HOME") or (HOME .. "/.local/state")) .. "/quickshell/user/generated/liquidglass.lua"
     if not is_file_exists(path) then return {} end
@@ -31,7 +32,7 @@ if hl.plugin.hyprglass then
     -- (Dolphin's view and sidebar, toolbars, menus).
     local shell = shellSettings()
     hg.config({
-        default_theme = "dark",
+        default_theme = shell.default_theme or "dark", -- the shell's light or dark mode
         default_preset = "tahoe_clear",
         enabled = shell.enabled ~= false,
         layers = { enabled = shell.enabled ~= false },

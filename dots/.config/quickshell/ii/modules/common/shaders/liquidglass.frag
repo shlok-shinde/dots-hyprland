@@ -19,16 +19,18 @@ layout(std140, binding = 0) uniform buf {
     float frost;       // px of blur in what shows through
     float rim;         // brightness of the one-pixel edge
     float brightness;
-    float adaptiveDim; // how hard bright backdrops are pulled down (readability)
+    float adaptiveDim; // dark mode: how hard bright backdrops are pulled down (readability)
     vec4 tint;         // rgb, a = amount
     float dispersion;  // chromatic split at the rim
     float shadow;      // soft drop shadow under the glass
+    float adaptiveBoost; // light mode: how hard dark backdrops are lifted (readability)
 };
 layout(binding = 1) uniform sampler2D mask;
 layout(binding = 2) uniform sampler2D field;
 layout(binding = 3) uniform sampler2D behind;
 
 const float CEILING = 0.30;
+const float FLOOR = 0.74;
 
 float luma(vec3 c) {
     return dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -75,10 +77,17 @@ void main() {
                       backdrop(uv + offset, px).g,
                       backdrop(uv + offset * (1.0 - dispersion), px).b);
 
-    // Tone: smoked, with bright backdrops pulled down so text on the glass stays readable
+    // Tone. Dark mode: smoked, with bright backdrops pulled down so white text
+    // on the glass stays readable. Light mode, the mirror: milky, with dark
+    // backdrops lifted toward a floor (white mixed in) so dark text stays readable.
     float l = luma(color);
     float toned = l - max(l - CEILING, 0.0) * adaptiveDim;
     color *= brightness * (l > 1e-4 ? toned / l : 1.0);
+    if (adaptiveBoost > 0.001) {
+        float m = luma(color);
+        float lifted = m + max(FLOOR - m, 0.0) * adaptiveBoost;
+        color = mix(color, vec3(1.0), clamp((lifted - m) / max(1.0 - m, 1e-3), 0.0, 1.0));
+    }
     color = mix(color, tint.rgb, tint.a);
 
     // Light: no key light. The edge brightens where it reflects something

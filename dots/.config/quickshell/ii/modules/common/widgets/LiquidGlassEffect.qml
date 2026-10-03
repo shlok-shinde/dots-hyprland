@@ -19,7 +19,8 @@ Item {
     property real frost: 0.8
     property real rim: 0.75
     property real brightness: 0.8
-    property real adaptiveDim: 0.8
+    property real adaptiveDim: 0.8   // dark mode: bright backdrops pulled down
+    property real adaptiveBoost: 0   // light mode: dark backdrops lifted (milky)
     property color tint: Qt.rgba(0.04, 0.04, 0.05, 0.25)
     property real dispersion: 0.35
     property real shadow: 0.28
@@ -100,6 +101,7 @@ Item {
         property real rim: root.rim
         property real brightness: root.brightness
         property real adaptiveDim: root.adaptiveDim
+        property real adaptiveBoost: root.adaptiveBoost
         property vector4d tint: Qt.vector4d(root.tint.r, root.tint.g, root.tint.b, root.tint.a)
         property real dispersion: root.dispersion
         property real shadow: root.shadow

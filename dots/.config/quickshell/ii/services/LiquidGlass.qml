@@ -9,9 +9,9 @@ import Quickshell.Io
 
 /**
  * Hands the Liquid Glass settings (on/off, Clear / Tinted, edge highlights)
- * to the compositor's glass plugin: right away through hyprctl, and for every
- * later Hyprland start or config reload through a small Lua file that
- * hypr/hyprland/liquidglass.lua reads.
+ * and the light or dark mode to the compositor's glass plugin: right away
+ * through hyprctl, and for every later Hyprland start or config reload through
+ * a small Lua file that hypr/hyprland/liquidglass.lua reads.
  */
 Singleton {
     id: root
@@ -21,6 +21,8 @@ Singleton {
     readonly property real tinted: settings.mode === "tinted" ? Math.max(0, Math.min(1, settings.tintAmount)) : 0
     readonly property real edgeHighlight: Math.max(0, settings.edgeHighlight)
     readonly property real lens: Math.max(0, settings.refraction)
+    // The glass follows the colour scheme: smoked in dark mode, milky in light
+    readonly property string theme: Appearance.m3colors.darkmode ? "dark" : "light"
     readonly property string statePath: FileUtils.trimFileProtocol(`${Directories.state}/user/generated/liquidglass.lua`)
 
     // Called once at startup (shell.qml), which also brings the singleton up.
@@ -32,6 +34,7 @@ Singleton {
     onTintedChanged: applyTimer.restart()
     onEdgeHighlightChanged: applyTimer.restart()
     onLensChanged: applyTimer.restart()
+    onThemeChanged: applyTimer.restart()
 
     Timer { // a slider drag sends one update, not dozens
         id: applyTimer
@@ -41,7 +44,7 @@ Singleton {
 
     function apply() {
         const on = root.enabled ? "true" : "false";
-        const fields = `enabled = ${on}, layers = { enabled = ${on} }, tinted = ${root.tinted.toFixed(3)}, edge_highlight = ${root.edgeHighlight.toFixed(3)}, lens = ${root.lens.toFixed(3)}`;
+        const fields = `enabled = ${on}, layers = { enabled = ${on} }, tinted = ${root.tinted.toFixed(3)}, edge_highlight = ${root.edgeHighlight.toFixed(3)}, lens = ${root.lens.toFixed(3)}, default_theme = "${root.theme}"`;
         stateFile.setText(`-- written by the shell (Settings > Liquid glass); read by hypr/hyprland/liquidglass.lua\nreturn { ${fields} }\n`);
         Quickshell.execDetached(["hyprctl", "eval", `if hl.plugin.hyprglass then hl.plugin.hyprglass.config({ ${fields} }) end`]);
     }

@@ -100,6 +100,7 @@ MouseArea {
     // lock draws the wallpaper itself and its own glass over it
     // (LiquidGlassEffect): a glass clock and glass under the three toolbars.
     readonly property bool liquid: Appearance.liquidGlass
+    readonly property bool light: !Appearance.m3colors.darkmode
     readonly property string wallpaperPath: {
         const path = Config.options.background.wallpaperPath;
         const isVideo = [".mp4", ".webm", ".mkv", ".avi", ".mov"].some(ext => path.endsWith(ext));
@@ -173,7 +174,9 @@ MouseArea {
     }
 
     // Glass under the toolbars (declared first so it sits behind them); the
-    // toolbars themselves go see-through in glass mode
+    // toolbars themselves go see-through in glass mode. It carries the theme's
+    // text, so it follows the mode: smoked in dark, milky in light. (The clock
+    // and date sit on the wallpaper and stay as they are, as on a Mac.)
     component IslandGlass: LiquidGlassEffect {
         required property Item island
         anchors.fill: island
@@ -182,6 +185,11 @@ MouseArea {
         opacity: island.opacity
         mapTick: root.toolbarScale
         backdrop: lockBackdrop
+        brightness: root.light ? 1.03 : 0.8
+        adaptiveDim: root.light ? 0 : 0.8
+        adaptiveBoost: root.light ? 0.85 : 0
+        tint: root.light ? Qt.rgba(0.98, 0.98, 0.99, 0.45) : Qt.rgba(0.04, 0.04, 0.05, 0.25)
+        shadow: root.light ? 0.2 : 0.28
         Rectangle {
             anchors.fill: parent
             radius: height / 2

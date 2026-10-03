@@ -34,7 +34,11 @@ Singleton {
     property bool liquidGlass: Config?.options.appearance.liquidGlass.enable ?? false
     // The accent (Settings > Liquid glass > Accent); none = the theme's own colours
     property bool hasAccent: (Config?.options.appearance.liquidGlass.accentColor ?? "") !== ""
-    property color accent: hasAccent ? Config.options.appearance.liquidGlass.accentColor : colors.colPrimary
+    // A near-white accent (the White swatch) would vanish on light glass: in
+    // light mode it reads as black, the way Nothing's own white does
+    property color accent: !hasAccent ? colors.colPrimary
+        : (!m3colors.darkmode && Qt.color(Config.options.appearance.liquidGlass.accentColor).hslLightness > 0.85) ? "#1A1A1A"
+        : Config.options.appearance.liquidGlass.accentColor
     property bool liquidCapsuleBar: liquidGlass && (Config?.options.appearance.liquidGlass.capsuleBar ?? true)
     property bool liquidModularSidebar: liquidGlass && (Config?.options.appearance.liquidGlass.modularSidebar ?? true)
     property real backgroundTransparency: liquidGlass ? 1 - Config.options.appearance.liquidGlass.tint
