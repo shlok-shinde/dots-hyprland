@@ -17,7 +17,7 @@ Item {
     property bool animeEnabled: Config.options.policies.weeb !== 0
     property bool animeCloset: Config.options.policies.weeb === 2
     property var tabButtonList: [
-        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
+        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Hermes.available ? "Hermes" : Translation.tr("Intelligence")}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : [])
     ]
@@ -94,6 +94,22 @@ Item {
 
         Component {
             id: aiChat
+            Loader { // Hermes Agent when it is installed, else the built-in LLM chat
+                id: aiChatLoader
+                active: Hermes.checked
+                sourceComponent: Hermes.available ? hermesChatPage : aiChatPage
+                onActiveFocusChanged: {
+                    if (activeFocus && item)
+                        item.inputField.forceActiveFocus();
+                }
+            }
+        }
+        Component {
+            id: hermesChatPage
+            HermesChat {}
+        }
+        Component {
+            id: aiChatPage
             AiChat {}
         }
         Component {
