@@ -7,10 +7,14 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
-PopupWindow {
+// A layer of its own rather than a popup of the bar: the glass plugin only
+// reaches layers, and a popup would show the desktop through it unglassed.
+PanelWindow {
     id: root
     required property QsMenuHandle trayItemMenuHandle
+    required property Item anchorItem // the tray icon it opens from
     property string trayItemId: ""
     property real popupBackgroundMargin: 0
 
@@ -19,6 +23,61 @@ PopupWindow {
 
     color: "transparent"
     property real padding: Appearance.sizes.elevationMargin
+
+    visible: false
+    screen: root.anchorItem.QsWindow.window?.screen ?? null
+    WlrLayershell.namespace: "quickshell:trayMenu"
+    WlrLayershell.layer: WlrLayer.Overlay
+    exclusionMode: ExclusionMode.Ignore
+    anchors {
+        left: true
+        top: true
+    }
+
+    // Where the icon is on the screen, taken when the menu opens. The icon's
+    // window is a layer too, placed by its anchors and margins.
+    property rect anchorRect: Qt.rect(0, 0, 0, 0)
+    function measureAnchor() {
+        const item = root.anchorItem;
+        const win = item?.QsWindow.window;
+        const screen = win?.screen;
+        if (!win || !screen)
+            return;
+        const p = item.mapToItem(null, 0, 0);
+        const a = win.anchors, m = win.margins;
+        const x = a.left ? m.left : a.right ? screen.width - win.width - m.right : (screen.width - win.width) / 2;
+        const y = a.top ? m.top : a.bottom ? screen.height - win.height - m.bottom : (screen.height - win.height) / 2;
+        root.anchorRect = Qt.rect(x + p.x, y + p.y, item.width, item.height);
+    }
+    // Below the icon (above it on a bottom bar, beside it on a vertical one),
+    // kept on screen
+    readonly property real gap: 4
+    margins {
+        left: {
+            const r = root.anchorRect;
+            const sw = root.screen?.width ?? 0;
+            let x;
+            if (!Config.options.bar.vertical)
+                x = r.x + (r.width - root.implicitWidth) / 2;
+            else if (Config.options.bar.bottom) // on the right
+                x = r.x - root.implicitWidth - root.gap + root.padding;
+            else
+                x = r.x + r.width + root.gap - root.padding;
+            return Math.round(Math.max(0, Math.min(x, sw - root.implicitWidth)));
+        }
+        top: {
+            const r = root.anchorRect;
+            const sh = root.screen?.height ?? 0;
+            let y;
+            if (Config.options.bar.vertical)
+                y = r.y + (r.height - root.implicitHeight) / 2;
+            else if (Config.options.bar.bottom)
+                y = r.y - root.implicitHeight - root.gap + root.padding;
+            else
+                y = r.y + r.height + root.gap - root.padding;
+            return Math.round(Math.max(0, Math.min(y, sh - root.implicitHeight)));
+        }
+    }
 
     implicitHeight: {
         let result = 0;
@@ -36,6 +95,7 @@ PopupWindow {
     }
 
     function open() {
+        root.measureAnchor();
         root.visible = true;
         root.menuOpened(root);
     }

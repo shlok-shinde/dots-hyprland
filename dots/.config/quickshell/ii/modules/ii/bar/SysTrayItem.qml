@@ -50,16 +50,7 @@ MouseArea {
             Component.onCompleted: this.open();
             trayItemMenuHandle: root.item.menu
             trayItemId: root.item.id
-            anchor {
-                window: root.QsWindow.window
-                item: root
-                gravity: Config.options.bar.vertical
-                    ? (Config.options.bar.bottom ? Edges.Left : Edges.Right)
-                    : (Config.options.bar.bottom ? Edges.Top : Edges.Bottom)
-                edges: Config.options.bar.vertical
-                    ? (Config.options.bar.bottom ? Edges.Left : Edges.Right)
-                    : (Config.options.bar.bottom ? Edges.Top : Edges.Bottom)
-            }
+            anchorItem: root
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
                 root.menuClosed();
@@ -68,13 +59,21 @@ MouseArea {
         }
     }
 
+    readonly property string iconSource: TrayService.iconSource(root.item.icon)
     IconImage {
         id: trayIcon
-        visible: !Config.options.tray.monochromeIcons
-        source: root.item.icon
+        visible: !Config.options.tray.monochromeIcons && root.iconSource.length > 0
+        source: root.iconSource
         anchors.centerIn: parent
         width: parent.width
         height: parent.height
+    }
+    MaterialSymbol { // its icon isn't in the theme
+        anchors.centerIn: parent
+        visible: root.iconSource.length === 0
+        text: TrayService.iconSymbol(root.item.icon, "apps")
+        iconSize: root.implicitHeight
+        color: Appearance.colors.colOnLayer0
     }
 
     Loader {

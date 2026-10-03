@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -16,6 +17,9 @@ RippleButton {
     property bool forceSpecialInteractionColumn: false
     readonly property bool hasIcon: menuEntry.icon.length > 0
     readonly property bool hasSpecialInteraction: menuEntry.buttonType !== QsMenuButtonType.None
+
+    readonly property string iconSource: TrayService.iconSource(menuEntry.icon)
+    readonly property string iconSymbol: iconSource.length > 0 ? "" : TrayService.iconSymbol(menuEntry.icon)
 
     signal dismiss()
     signal openSubmenu(handle: QsMenuHandle)
@@ -97,12 +101,20 @@ RippleButton {
 
             Loader {
                 anchors.centerIn: parent
-                active: root.menuEntry.icon.length > 0
+                active: root.iconSource.length > 0
                 sourceComponent: IconImage {
                     asynchronous: true
-                    source: root.menuEntry.icon
+                    source: root.iconSource
                     implicitSize: 20
                     mipmap: true
+                }
+            }
+            Loader {
+                anchors.centerIn: parent
+                active: root.iconSymbol.length > 0
+                sourceComponent: MaterialSymbol {
+                    text: root.iconSymbol
+                    iconSize: 18
                 }
             }
         }

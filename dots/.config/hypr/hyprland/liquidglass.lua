@@ -43,9 +43,9 @@ if hl.plugin.hyprglass then
     -- Shell panels get glass cut to whatever shape they draw. The background,
     -- overlay and screenshot selector are left alone.
     -- Bar, dock and the power menu's tiles: the clear glass. Panels that carry
-    -- text (launcher and overview, sidebars, notifications...) get the same
-    -- glass frostier and darker, so they stay readable and stand apart from
-    -- what is behind them.
+    -- text (launcher and overview, sidebars, notifications, tray menus...) get
+    -- the same glass frostier and darker, so they stay readable and stand apart
+    -- from what is behind them.
     for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock", "quickshell:session" }) do
         hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
     end
@@ -53,7 +53,7 @@ if hl.plugin.hyprglass then
         "quickshell:overview", "quickshell:cheatsheet", "quickshell:wallpaperSelector",
         "quickshell:sidebarLeft", "quickshell:sidebarRight",
         "quickshell:notificationPopup", "quickshell:onScreenDisplay",
-        "quickshell:mediaControls", "quickshell:osk", "quickshell:popup",
+        "quickshell:mediaControls", "quickshell:osk", "quickshell:popup", "quickshell:trayMenu",
     }) do
         hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe" })
     end
