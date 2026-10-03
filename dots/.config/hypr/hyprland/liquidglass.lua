@@ -24,13 +24,17 @@ if hl.plugin.hyprglass then
 
     -- Shell panels get glass cut to whatever shape they draw. Full-screen
     -- layers (background, overview, session, overlay) are left alone.
+    -- Like Apple: Clear for chrome over content (bar, dock), Regular, which
+    -- frosts and tints more, for panels that are mostly text.
+    for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock" }) do
+        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
+    end
     for _, ns in ipairs({
-        "quickshell:bar", "quickshell:verticalBar", "quickshell:dock",
         "quickshell:sidebarLeft", "quickshell:sidebarRight",
         "quickshell:notificationPopup", "quickshell:onScreenDisplay",
         "quickshell:mediaControls", "quickshell:osk", "quickshell:popup",
     }) do
-        hg.layer(ns, { mask_threshold = 0.04 })
+        hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe" })
     end
 
     -- Magic lamp: pour the focused window into its dock icon, and back.
