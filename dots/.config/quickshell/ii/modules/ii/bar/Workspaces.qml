@@ -430,7 +430,8 @@ ButtonMouseArea {
 
             contentLayer: StyledRectangle.ContentLayer.Group
             radius: indicatorThickness / 2
-            color: Appearance.colors.colPrimary
+            // Nothing: the current workspace is the one red dot in the bar
+            color: Appearance.liquidGlass ? Appearance.accent : Appearance.colors.colPrimary
 
             x: root.vertical ? null : indicatorPosition
             y: root.vertical ? indicatorPosition : null
