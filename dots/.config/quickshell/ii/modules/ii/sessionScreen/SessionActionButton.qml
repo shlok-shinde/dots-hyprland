@@ -12,8 +12,11 @@ RippleButton {
     property real size: 120
 
     buttonRadius: (button.focus || button.down) ? size / 2 : Appearance.rounding.verylarge
-    colBackground: button.keyboardDown ? Appearance.colors.colSecondaryContainerActive : 
-        button.focus ? Appearance.colors.colPrimary : 
+    // Liquid glass: each tile is a pane of glass (the faint fill is what the
+    // compositor reads as its shape); the selected one fills in solid
+    colBackground: button.keyboardDown ? Appearance.colors.colSecondaryContainerActive :
+        button.focus ? Appearance.colors.colPrimary :
+        Appearance.liquidGlass ? Appearance.colors.colLayer0 :
         Appearance.colors.colSecondaryContainer
     colBackgroundHover: Appearance.colors.colPrimary
     colRipple: Appearance.colors.colPrimaryActive

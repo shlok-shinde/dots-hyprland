@@ -41,11 +41,12 @@ if hl.plugin.hyprglass then
     })
 
     -- Shell panels get glass cut to whatever shape they draw. The background,
-    -- session screen, overlay and screenshot selector are left alone.
-    -- Bar and dock: the clear glass. Panels that carry text (launcher and
-    -- overview, sidebars, notifications...) get the same glass frostier and
-    -- darker, so they stay readable and stand apart from what is behind them.
-    for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock" }) do
+    -- overlay and screenshot selector are left alone.
+    -- Bar, dock and the power menu's tiles: the clear glass. Panels that carry
+    -- text (launcher and overview, sidebars, notifications...) get the same
+    -- glass frostier and darker, so they stay readable and stand apart from
+    -- what is behind them.
+    for _, ns in ipairs({ "quickshell:bar", "quickshell:verticalBar", "quickshell:dock", "quickshell:session" }) do
         hg.layer(ns, { mask_threshold = 0.04, preset = "tahoe_clear" })
     end
     for _, ns in ipairs({
@@ -78,6 +79,10 @@ hl.config({
         },
     },
 })
+
+-- The power menu's dim is a layer of its own under the menu (the menu's own
+-- surface is all glass tiles, and a scrim drawn there would become one big pane)
+hl.layer_rule({ match = { namespace = "quickshell:sessionScrim" }, no_anim = true })
 
 -- Motion: springs instead of decelerations. Panels and windows overshoot a
 -- little and settle, the gel-like give of the material; nothing bounces twice.

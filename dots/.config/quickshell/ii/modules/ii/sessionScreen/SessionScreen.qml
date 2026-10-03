@@ -16,6 +16,27 @@ Scope {
     property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name)
 
     Loader {
+        // Liquid glass: the dim behind the menu, a window of its own. It sits on
+        // the top layer, over the bar and dock (opened after them) and under
+        // the menu, which is on the overlay layer
+        active: GlobalStates.sessionOpen && Appearance.liquidGlass
+        sourceComponent: PanelWindow {
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: "quickshell:sessionScrim"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            color: Qt.rgba(0, 0, 0, 0.45)
+            anchors {
+                top: true
+                left: true
+                right: true
+            }
+            implicitWidth: root.focusedScreen?.width ?? 0
+            implicitHeight: root.focusedScreen?.height ?? 0
+        }
+    }
+
+    Loader {
         id: sessionLoader
         active: GlobalStates.sessionOpen
         onActiveChanged: {
@@ -45,7 +66,9 @@ Scope {
             WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-            color: ColorUtils.transparentize(Appearance.m3colors.m3background, Appearance.m3colors.darkmode ? 0.05 : 0.12)
+            // Liquid glass: no scrim here (it would make the whole screen one pane);
+            // the dim is the separate scrim window, and every tile is its own glass
+            color: Appearance.liquidGlass ? "transparent" : ColorUtils.transparentize(Appearance.m3colors.m3background, Appearance.m3colors.darkmode ? 0.05 : 0.12)
 
             anchors {
                 top: true
@@ -75,27 +98,40 @@ Scope {
                     }
                 }
 
-                ColumnLayout {
+                Rectangle {
+                    // With liquid glass the heading sits on its own pane: text
+                    // straight on the see-through window would turn into glass glyphs
                     Layout.alignment: Qt.AlignHCenter
-                    spacing: 0
-                    StyledText {
-                        // Title
-                        Layout.alignment: Qt.AlignHCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        font {
-                            family: Appearance.font.family.title
-                            pixelSize: Appearance.font.pixelSize.title
-                            variableAxes: Appearance.font.variableAxes.title
-                        }
-                        text: Translation.tr("Session")
-                    }
+                    property real padding: Appearance.liquidGlass ? 16 : 0
+                    implicitWidth: headingColumn.implicitWidth + padding * 2.5
+                    implicitHeight: headingColumn.implicitHeight + padding * 2
+                    radius: Appearance.rounding.large
+                    color: Appearance.liquidGlass ? Appearance.colors.colLayer0 : "transparent"
 
-                    StyledText {
-                        // Small instruction
-                        Layout.alignment: Qt.AlignHCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        text: Translation.tr("Arrow keys to navigate, Enter to select\nEsc or click anywhere to cancel")
+                    ColumnLayout {
+                        id: headingColumn
+                        anchors.centerIn: parent
+                        spacing: 0
+                        StyledText {
+                            // Title
+                            Layout.alignment: Qt.AlignHCenter
+                            horizontalAlignment: Text.AlignHCenter
+                            font {
+                                family: Appearance.font.family.title
+                                pixelSize: Appearance.font.pixelSize.title
+                                variableAxes: Appearance.font.variableAxes.title
+                            }
+                            text: Translation.tr("Session")
+                        }
+
+                        StyledText {
+                            // Small instruction
+                            Layout.alignment: Qt.AlignHCenter
+                            horizontalAlignment: Text.AlignHCenter
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            color: Appearance.liquidGlass ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer0
+                            text: Translation.tr("Arrow keys to navigate, Enter to select\nEsc or click anywhere to cancel")
+                        }
                     }
                 }
 
@@ -274,8 +310,8 @@ Scope {
     component DescriptionLabel: Rectangle {
         id: descriptionLabel
         property string text
-        property color textColor: Appearance.colors.colOnTooltip
-        color: Appearance.colors.colTooltip
+        property color textColor: Appearance.liquidGlass ? Appearance.colors.colOnLayer0 : Appearance.colors.colOnTooltip
+        color: Appearance.liquidGlass ? Appearance.colors.colLayer0 : Appearance.colors.colTooltip
         clip: true
         radius: Appearance.rounding.normal
         implicitHeight: descriptionLabelText.implicitHeight + 10 * 2
