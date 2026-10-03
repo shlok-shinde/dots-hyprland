@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
+import Quickshell.Wayland
 
 DockButton {
     id: root
@@ -61,9 +62,34 @@ DockButton {
         }
     }
 
+    // Global rect of this icon, where the genie pours this app's windows.
+    function globalIconRect() {
+        const win = root.QsWindow.window;
+        const screen = win?.screen;
+        if (!win || !screen)
+            return null;
+        const p = root.mapToItem(null, 0, 0);
+        // the dock is anchored to the bottom edge across the whole screen width
+        return {
+            x: screen.x + p.x + root.width * 0.15,
+            y: screen.y + screen.height - win.height + p.y + root.height * 0.15,
+            w: root.width * 0.7,
+            h: root.height * 0.7
+        };
+    }
+    readonly property var iconRectProvider: () => root.globalIconRect()
+    Component.onCompleted: if (!isSeparator) Genie.registerIcon(appToplevel.appId, iconRectProvider)
+    Component.onDestruction: if (!isSeparator) Genie.unregisterIcon(appToplevel.appId, iconRectProvider)
+
     onClicked: {
         if (appToplevel.toplevels.length === 0) {
             root.desktopEntry?.execute();
+            return;
+        }
+        // A minimized window comes back out of this icon before anything else gets focus.
+        const minimized = appToplevel.toplevels.filter(t => Genie.isMinimized(t));
+        if (minimized.length > 0) {
+            Genie.restoreToplevel(minimized[minimized.length - 1], root.globalIconRect());
             return;
         }
         lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
