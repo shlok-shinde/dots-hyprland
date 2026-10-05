@@ -2,30 +2,30 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 /**
- * Hermes asking before it runs something risky (its approvals.mode decides
- * what counts). It waits for an answer; unanswered questions are denied after
- * Hermes' own timeout (approvals.timeout in its config).
+ * Hermes asking for something it shouldn't see in the chat: your sudo password
+ * for a command, or a key a skill needs. Typed masked, sent straight to Hermes,
+ * never shown in the transcript.
  */
 Rectangle {
     id: root
     property var entry
     readonly property string answer: entry?.answer ?? ""
     readonly property bool answered: answer.length > 0
-    readonly property string answerName: {
-        if (answer === "cancelled")
-            return Translation.tr("No answer (Hermes stopped asking)");
-        const option = (entry?.options ?? []).find(option => option.optionId === answer);
-        return option ? option.name : answer;
-    }
 
     implicitHeight: columnLayout.implicitHeight + 10 * 2
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1
     border.width: root.answered ? 0 : 1
     border.color: Appearance.colors.colPrimary
+
+    function send() {
+        Hermes.answerSecret(root.entry, secretField.text);
+        secretField.text = "";
+    }
 
     ColumnLayout {
         id: columnLayout
@@ -41,7 +41,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 8
             MaterialSymbol {
-                text: "shield_question"
+                text: "key"
                 iconSize: Appearance.font.pixelSize.larger
                 color: root.answered ? Appearance.colors.colSubtext : Appearance.colors.colPrimary
             }
@@ -50,22 +50,13 @@ Rectangle {
                 wrapMode: Text.Wrap
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnLayer1
-                text: Translation.tr("Hermes asks to go ahead")
+                text: root.entry?.title ?? ""
             }
         }
 
-        StyledText { // why it asks
+        Rectangle { // the command it is for (sudo)
             Layout.fillWidth: true
-            visible: text.length > 0 && (root.entry?.input ?? "").length > 0
-            wrapMode: Text.Wrap
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: Appearance.colors.colSubtext
-            text: root.entry?.title ?? ""
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            visible: commandText.text.length > 0
+            visible: (root.entry?.input ?? "").length > 0
             implicitHeight: commandText.implicitHeight + 8 * 2
             radius: Appearance.rounding.verysmall
             color: Appearance.colors.colLayer2
@@ -81,22 +72,38 @@ Rectangle {
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colOnLayer2
-                text: (root.entry?.input ?? "").length > 0 ? root.entry.input : (root.entry?.title ?? "")
+                text: root.entry?.input ?? ""
             }
         }
 
-        Flow {
+        MaterialTextField {
+            id: secretField
+            Layout.fillWidth: true
+            visible: !root.answered
+            echoMode: TextInput.Password
+            placeholderText: (root.entry?.envVar ?? "").length > 0 ? root.entry.envVar : Translation.tr("Password")
+            onAccepted: root.send()
+        }
+
+        RowLayout {
             Layout.fillWidth: true
             visible: !root.answered
             spacing: 5
-            Repeater {
-                model: root.entry?.options ?? []
-                delegate: DialogButton {
-                    required property var modelData
-                    buttonText: modelData.name
-                    colEnabled: modelData.kind.startsWith("reject") ? Appearance.m3colors.m3error : Appearance.colors.colPrimary
-                    onClicked: Hermes.answerPermission(root.entry, modelData.optionId)
+            Item {
+                Layout.fillWidth: true
+            }
+            DialogButton {
+                buttonText: Translation.tr("Skip")
+                colEnabled: Appearance.colors.colSubtext
+                onClicked: {
+                    secretField.text = "";
+                    Hermes.answerSecret(root.entry, "");
                 }
+            }
+            DialogButton {
+                buttonText: Translation.tr("Send")
+                enabled: secretField.text.length > 0
+                onClicked: root.send()
             }
         }
 
@@ -104,7 +111,7 @@ Rectangle {
             visible: root.answered
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: Appearance.colors.colSubtext
-            text: root.answerName
+            text: root.answer === "given" ? Translation.tr("Sent") : root.answer === "skipped" ? Translation.tr("Skipped") : Translation.tr("No answer (Hermes stopped asking)")
         }
     }
 }

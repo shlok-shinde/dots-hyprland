@@ -12,7 +12,9 @@ import Quickshell
 
 /**
  * The sidebar's AI page when Hermes Agent is installed: a chat with your own
- * Hermes (services/Hermes.qml), its tool calls and questions inline.
+ * Hermes (services/Hermes.qml), its tool calls and questions inline. "/" opens
+ * every command Hermes has (its TUI's and app's, and your skills), with
+ * pickers for /resume and /model and Hermes' own completions for arguments.
  */
 Item {
     id: root
@@ -20,7 +22,9 @@ Item {
     property var inputField: messageInputField
     property string commandPrefix: "/"
 
+    // [{ name: what goes in the box, displayName, description, category, run: send on pick, sessionId }]
     property var suggestionList: []
+    property string pickerMode: "" // "", "commands", "sessions", "models", "arguments"
 
     onActiveFocusChanged: {
         if (activeFocus)
@@ -56,111 +60,145 @@ Item {
         }
     }
 
-    // Handled here; any other /command goes to Hermes, which has its own (/help lists them)
-    property var localCommands: [
-        {
-            name: "new",
-            description: Translation.tr("Start a new chat (the current one stays in Hermes' history)"),
-            execute: args => Hermes.newConversation()
-        },
-        {
-            name: "clear",
-            description: Translation.tr("Start a new chat"),
-            execute: args => Hermes.newConversation()
-        },
-        {
-            name: "resume",
-            description: Translation.tr("Go back to an earlier chat"),
-            execute: args => {
-                if (args.length === 0) {
-                    Hermes.addNotice(Translation.tr("Usage: %1resume CHAT (pick one from the list)").arg(root.commandPrefix));
-                    return;
-                }
-                Hermes.resumeConversation(args[0]);
-            }
-        },
-        {
-            name: "model",
-            description: Translation.tr("Choose the model for this chat"),
-            execute: args => {
-                if (args.length === 0) {
-                    Hermes.addNotice(Translation.tr("Model: %1\nChange it with %2model MODEL").arg(Hermes.currentModelId).arg(root.commandPrefix));
-                    return;
-                }
-                Hermes.setModel(args[0]);
-            }
-        },
-        {
-            name: "stop",
-            description: Translation.tr("Stop what Hermes is doing"),
-            execute: args => Hermes.cancel()
-        },
-    ]
+    Connections {
+        target: Hermes
+        function onPrefillRequested(text) {
+            messageInputField.text = text;
+            messageInputField.cursorPosition = text.length;
+            messageInputField.forceActiveFocus();
+        }
+        function onSessionsChanged() {
+            if (root.pickerMode === "sessions")
+                root.updateSuggestions();
+        }
+        function onModelChoicesChanged() {
+            if (root.pickerMode === "models")
+                root.updateSuggestions();
+        }
+        function onCommandsChanged() {
+            if (root.pickerMode === "commands")
+                root.updateSuggestions();
+        }
+    }
 
     function handleInput(inputText) {
-        const text = inputText.trim();
-        if (text.length === 0)
+        if (inputText.trim().length === 0)
             return;
-        if (text.startsWith(root.commandPrefix)) {
-            const words = text.split(/\s+/);
-            const command = root.localCommands.find(cmd => cmd.name === words[0].substring(1));
-            if (command) {
-                command.execute(words.slice(1));
-                messageListView.positionViewAtEnd();
-                return;
-            }
-        }
-        Hermes.sendPrompt(text);
+        Hermes.submit(inputText);
         messageListView.followOutput = true;
         messageListView.positionViewAtEnd();
     }
 
+    function relativeTime(seconds) {
+        const minutes = Math.round((Date.now() / 1000 - seconds) / 60);
+        if (minutes < 1)
+            return Translation.tr("just now");
+        if (minutes < 60)
+            return Translation.tr("%1 min ago").arg(minutes);
+        if (minutes < 60 * 24)
+            return Translation.tr("%1 h ago").arg(Math.round(minutes / 60));
+        return Translation.tr("%1 days ago").arg(Math.round(minutes / 60 / 24));
+    }
+
+    // Best first: names that start with it, then names that contain it, then descriptions
+    function rank(items, query, nameOf, descriptionOf) {
+        const q = query.toLowerCase();
+        if (q.length === 0)
+            return items;
+        const starts = [], contains = [], described = [];
+        for (const item of items) {
+            const name = nameOf(item).toLowerCase();
+            if (name.startsWith(q))
+                starts.push(item);
+            else if (name.includes(q))
+                contains.push(item);
+            else if (descriptionOf(item).toLowerCase().includes(q))
+                described.push(item);
+        }
+        return [...starts, ...contains, ...described];
+    }
+
+    property int completionRequest: 0
+    Timer {
+        id: completionTimer
+        interval: 120
+        onTriggered: {
+            const text = messageInputField.text;
+            const request = ++root.completionRequest;
+            Hermes.complete(text, (items, replaceFrom) => {
+                if (request !== root.completionRequest || messageInputField.text !== text)
+                    return;
+                root.suggestionList = items.map(item => ({
+                            name: text.slice(0, replaceFrom) + item.text,
+                            displayName: item.display ?? item.text,
+                            description: item.meta ?? "",
+                            run: false
+                        }));
+            });
+        }
+    }
+
     function updateSuggestions() {
         const text = messageInputField.text;
-        const words = text.trim().split(/\s+/);
-        const typingArgument = words.length > 1 || text.endsWith(" ");
-        const query = typingArgument ? (words[1] ?? "") : "";
-        const fuzzy = (items, key) => Fuzzy.go(query, items.map(item => ({
-                        name: Fuzzy.prepare(item[key]),
-                        obj: item
-                    })), {
-                all: true,
-                key: "name"
-            }).map(result => result.obj);
-
-        if (text.length === 0 || !text.startsWith(root.commandPrefix)) {
+        if (!text.startsWith(root.commandPrefix) || !Hermes.isCommand(text) && text !== root.commandPrefix) {
+            root.pickerMode = "";
             root.suggestionList = [];
-        } else if (text.startsWith(`${root.commandPrefix}model`) && typingArgument) {
-            root.suggestionList = fuzzy(Hermes.models, "modelId").map(model => ({
-                        name: `${root.commandPrefix}model ${model.modelId}`,
-                        displayName: Hermes.shortModelName(model.modelId),
-                        description: `${model.name}\n${model.description ?? ""}`
+            return;
+        }
+        const space = text.search(/\s/);
+        if (space < 0) { // the command itself
+            root.pickerMode = "commands";
+            const typed = text.slice(1);
+            root.suggestionList = root.rank(Hermes.commands, typed, c => c.name.slice(1), c => c.description).map(command => ({
+                        name: command.name,
+                        displayName: command.name,
+                        description: command.description,
+                        category: command.category,
+                        run: !command.needsArgs
                     }));
-        } else if (text.startsWith(`${root.commandPrefix}resume`) && typingArgument) {
-            root.suggestionList = fuzzy(Hermes.sessions.map(session => Object.assign({
-                            label: session.title ?? ""
-                        }, session)), "label").map(session => ({
-                        name: `${root.commandPrefix}resume ${session.sessionId}`,
-                        displayName: session.label.length === 0 ? session.sessionId.slice(0, 8) : session.label.length > 32 ? `${session.label.slice(0, 31)}…` : session.label,
-                        description: `${session.title ?? ""}\n${session.updatedAt ?? ""}`
+            return;
+        }
+        const command = Hermes.resolveCommand(text.slice(1, space));
+        const arg = text.slice(space + 1);
+        if (command === "/resume" || command === "/sessions") {
+            if (root.pickerMode !== "sessions")
+                Hermes.refreshSessions();
+            root.pickerMode = "sessions";
+            root.suggestionList = root.rank(Hermes.sessions, arg.trim(), s => s.title ?? s.preview ?? "", s => `${s.preview ?? ""} ${s.id}`).map(session => ({
+                        name: `/resume ${session.id}`,
+                        displayName: (session.title ?? "").length > 0 ? session.title : (session.preview ?? "").length > 0 ? session.preview : session.id.slice(0, 8),
+                        description: `${root.relativeTime(session.started_at ?? 0)} · ${Translation.tr("%1 messages").arg(session.message_count ?? 0)}${session.id === Hermes.storedSessionId ? " · " + Translation.tr("this chat") : ""}`,
+                        sessionId: session.id,
+                        run: true
                     }));
-        } else if (!typingArgument) {
-            const prefix = words[0].substring(1);
-            const ours = root.localCommands.map(cmd => ({
-                        name: cmd.name,
-                        description: cmd.description
-                    }));
-            const hermesOwn = Hermes.commands.filter(cmd => !ours.some(own => own.name === cmd.name)).map(cmd => ({
-                        name: cmd.name,
-                        description: cmd.description + (cmd.hint ? `\n${root.commandPrefix}${cmd.name} ${cmd.hint}` : "")
-                    }));
-            root.suggestionList = [...ours, ...hermesOwn].filter(cmd => cmd.name.startsWith(prefix)).map(cmd => ({
-                        name: `${root.commandPrefix}${cmd.name}`,
-                        description: cmd.description
+        } else if (command === "/model") {
+            if (root.pickerMode !== "models")
+                Hermes.refreshModels();
+            root.pickerMode = "models";
+            root.suggestionList = root.rank(Hermes.modelChoices, arg.trim(), m => m.model.split("/").pop(), m => `${m.model} ${m.providerName}`).map(model => ({
+                        name: `/model ${model.value}`,
+                        displayName: model.model,
+                        description: model.providerName + (model.current ? ` · ${Translation.tr("current")}` : ""),
+                        run: true
                     }));
         } else {
-            root.suggestionList = [];
+            root.pickerMode = "arguments";
+            completionTimer.restart();
         }
+    }
+
+    // run: send it now (a picked chat, a model, a command without arguments); else fill the box
+    function acceptSuggestion(item, run) {
+        if (!item)
+            return;
+        if (run && item.run) {
+            messageInputField.clear();
+            root.handleInput(item.name);
+            return;
+        }
+        messageInputField.text = item.name + " ";
+        messageInputField.cursorPosition = messageInputField.text.length;
+        messageInputField.forceActiveFocus();
     }
 
     component StatusItem: MouseArea {
@@ -220,6 +258,22 @@ Item {
     Component {
         id: planComponent
         HermesPlan {}
+    }
+    Component {
+        id: clarifyComponent
+        HermesClarify {}
+    }
+    Component {
+        id: secretComponent
+        HermesSecret {}
+    }
+    Component {
+        id: outputComponent
+        HermesOutput {}
+    }
+    Component {
+        id: noticeComponent
+        HermesNotice {}
     }
 
     ColumnLayout {
@@ -345,6 +399,14 @@ Item {
                             return permissionComponent;
                         case "plan":
                             return planComponent;
+                        case "clarify":
+                            return clarifyComponent;
+                        case "secret":
+                            return secretComponent;
+                        case "output":
+                            return outputComponent;
+                        case "notice":
+                            return noticeComponent;
                         default:
                             return messageComponent;
                         }
@@ -354,7 +416,7 @@ Item {
                         if (entryLoader.entry?.kind === "assistant") {
                             // A reply that goes on after a tool call or plan belongs to the same turn
                             const previous = entryLoader.index > 0 ? Hermes.entryById[Hermes.entryIds[entryLoader.index - 1]] : null;
-                            item.showHeader = !previous || previous.kind === "user" || previous.kind === "notice";
+                            item.showHeader = !previous || previous.kind === "user" || previous.kind === "notice" || previous.kind === "output" || (entryLoader.entry.label ?? "").length > 0;
                         }
                     }
                 }
@@ -365,7 +427,7 @@ Item {
                 shown: Hermes.entryIds.length === 0
                 icon: "neurology"
                 title: "Hermes"
-                description: Hermes.starting ? Translation.tr("Starting Hermes…") : Translation.tr("Your agent, with its tools,\nmemory and skills\n%1 for commands\nCtrl+O to expand the sidebar\nCtrl+P to pin it, Ctrl+D to detach it").arg(root.commandPrefix)
+                description: Hermes.starting ? Translation.tr("Starting Hermes…") : Translation.tr("Your agent, with its tools,\nmemory and skills\n%1 for all its commands\nCtrl+O to expand the sidebar\nCtrl+P to pin it, Ctrl+D to detach it").arg(root.commandPrefix)
                 shape: MaterialShape.Shape.PixelCircle
             }
 
@@ -375,54 +437,135 @@ Item {
             }
         }
 
-        DescriptionBox {
-            text: root.suggestionList[suggestions.selectedIndex]?.description ?? ""
-            showArrows: root.suggestionList.length > 1
+        RowLayout { // What Hermes is doing
+            Layout.fillWidth: true
+            Layout.leftMargin: 6
+            visible: Hermes.busy && Hermes.activity.length > 0 && !suggestionsBox.visible
+            spacing: 6
+            MaterialSymbol {
+                text: "progress_activity"
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colSubtext
+                RotationAnimation on rotation {
+                    running: Hermes.busy
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                }
+            }
+            StyledText {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                text: Hermes.activity
+            }
         }
 
-        FlowButtonGroup { // Suggestions
-            id: suggestions
-            visible: root.suggestionList.length > 0 && messageInputField.text.length > 0
-            property int selectedIndex: 0
+        Rectangle { // Suggestions: commands, chats, models, a command's arguments
+            id: suggestionsBox
+            readonly property int rowHeight: 44
             Layout.fillWidth: true
-            spacing: 5
+            visible: root.suggestionList.length > 0 && messageInputField.text.length > 0
+            implicitHeight: Math.min(root.suggestionList.length, 6) * rowHeight + 8
+            radius: Appearance.rounding.normal - root.padding
+            color: Appearance.colors.colLayer2
 
-            Repeater {
-                id: suggestionRepeater
-                model: {
-                    suggestions.selectedIndex = 0;
-                    return root.suggestionList.slice(0, 10);
+            StyledListView {
+                id: suggestionsView
+                property bool keyboardPicked: false // moved with the arrow keys: Enter takes it
+                anchors.fill: parent
+                anchors.margins: 4
+                clip: true
+                popin: false
+                animateAppearance: false
+                currentIndex: 0
+                highlightMoveDuration: 0
+                model: ScriptModel {
+                    values: root.suggestionList
+                    onValuesChanged: {
+                        suggestionsView.currentIndex = 0;
+                        suggestionsView.keyboardPicked = false;
+                    }
                 }
-                delegate: ApiCommandButton {
-                    id: commandButton
+                delegate: RippleButton {
+                    id: suggestionRow
                     required property var modelData
                     required property int index
-                    colBackground: suggestions.selectedIndex === index ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer
-                    bounce: false
-                    contentItem: StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.m3colors.m3onSurface
-                        horizontalAlignment: Text.AlignHCenter
-                        text: commandButton.modelData.displayName ?? commandButton.modelData.name
-                    }
+                    readonly property bool selected: suggestionsView.currentIndex === index
+                    width: suggestionsView.width
+                    implicitHeight: suggestionsBox.rowHeight
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: selected ? Appearance.colors.colSecondaryContainer : "transparent"
+                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     onHoveredChanged: {
-                        if (commandButton.hovered)
-                            suggestions.selectedIndex = index;
+                        if (hovered)
+                            suggestionsView.currentIndex = index;
                     }
-                    onClicked: suggestions.acceptSuggestion(modelData.name)
+                    onClicked: root.acceptSuggestion(modelData, true)
+
+                    contentItem: RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 10
+                            rightMargin: 6
+                        }
+                        spacing: 6
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 6
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.family: root.pickerMode === "sessions" ? Appearance.font.family.main : Appearance.font.family.monospace
+                                    color: suggestionRow.selected ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer2
+                                    text: suggestionRow.modelData.displayName ?? suggestionRow.modelData.name
+                                }
+                                StyledText {
+                                    visible: (suggestionRow.modelData.category ?? "").length > 0
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    color: Appearance.colors.colSubtext
+                                    text: suggestionRow.modelData.category ?? ""
+                                }
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                visible: text.length > 0
+                                elide: Text.ElideRight
+                                font.family: Appearance.font.family.reading
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: (suggestionRow.modelData.description ?? "").split("\n")[0]
+                            }
+                        }
+                        RippleButton { // forget a chat
+                            visible: (suggestionRow.modelData.sessionId ?? "").length > 0 && suggestionRow.modelData.sessionId !== Hermes.storedSessionId
+                            implicitWidth: 30
+                            implicitHeight: 30
+                            buttonRadius: Appearance.rounding.full
+                            onClicked: Hermes.deleteConversation(suggestionRow.modelData.sessionId)
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                text: "delete"
+                                iconSize: Appearance.font.pixelSize.larger
+                                color: Appearance.colors.colSubtext
+                            }
+                            StyledToolTip {
+                                text: Translation.tr("Delete this chat")
+                            }
+                        }
+                    }
+                    StyledToolTip {
+                        text: suggestionRow.modelData.description ?? ""
+                        extraVisibleCondition: (suggestionRow.modelData.description ?? "").length > 48
+                    }
                 }
-            }
-
-            function acceptSuggestion(word) {
-                // Suggestions carry the whole command line ("/model x"), so they replace it
-                messageInputField.text = word + " ";
-                messageInputField.cursorPosition = messageInputField.text.length;
-                messageInputField.forceActiveFocus();
-            }
-
-            function acceptSelectedWord() {
-                if (suggestions.selectedIndex >= 0 && suggestions.selectedIndex < suggestionRepeater.count)
-                    suggestions.acceptSuggestion(root.suggestionList[suggestions.selectedIndex].name);
             }
         }
 
@@ -461,33 +604,55 @@ Item {
                         wrapMode: TextArea.Wrap
                         padding: 10
                         color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
-                        placeholderText: Hermes.busy ? Translation.tr("Message Hermes (it reads it when it can)") : Translation.tr('Message Hermes... "%1" for commands').arg(root.commandPrefix)
+                        placeholderText: Hermes.busy ? Translation.tr("Message Hermes (Esc stops it)") : Translation.tr('Message Hermes... "%1" for commands').arg(root.commandPrefix)
                         background: null
 
-                        onTextChanged: {
-                            if (text.startsWith(`${root.commandPrefix}resume`))
-                                Hermes.refreshSessions();
-                            root.updateSuggestions();
+                        onTextChanged: root.updateSuggestions()
+
+                        function moveSuggestion(step) {
+                            suggestionsView.currentIndex = Math.max(0, Math.min(root.suggestionList.length - 1, suggestionsView.currentIndex + step));
+                            suggestionsView.positionViewAtIndex(suggestionsView.currentIndex, ListView.Contain);
+                            suggestionsView.keyboardPicked = true;
                         }
 
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
-                                suggestions.acceptSelectedWord();
+                        // Enter takes the highlighted suggestion when you picked it, when a picker
+                        // is open, or when what you typed isn't a whole command yet ("/us")
+                        function enterTakesSuggestion() {
+                            if (!suggestionsBox.visible)
+                                return false;
+                            if (suggestionsView.keyboardPicked || root.pickerMode === "sessions" || root.pickerMode === "models")
+                                return true;
+                            if (root.pickerMode === "commands") {
+                                const typed = messageInputField.text.trim().toLowerCase();
+                                return !Hermes.commands.some(command => command.name === typed) && Hermes.canon[typed] === undefined;
+                            }
+                            return false;
+                        }
+
+                        Keys.onPressed: event => handleKey(event)
+                        function handleKey(event) {
+                            if (event.key === Qt.Key_Tab && suggestionsBox.visible) {
+                                root.acceptSuggestion(root.suggestionList[suggestionsView.currentIndex], false);
                                 event.accepted = true;
-                            } else if (event.key === Qt.Key_Up && suggestions.visible) {
-                                suggestions.selectedIndex = Math.max(0, suggestions.selectedIndex - 1);
+                            } else if (event.key === Qt.Key_Up && suggestionsBox.visible) {
+                                moveSuggestion(-1);
                                 event.accepted = true;
-                            } else if (event.key === Qt.Key_Down && suggestions.visible) {
-                                suggestions.selectedIndex = Math.min(root.suggestionList.length - 1, suggestions.selectedIndex + 1);
+                            } else if (event.key === Qt.Key_Down && suggestionsBox.visible) {
+                                moveSuggestion(1);
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
                                 if (event.modifiers & Qt.ShiftModifier) {
                                     messageInputField.insert(messageInputField.cursorPosition, "\n");
+                                } else if (enterTakesSuggestion()) {
+                                    root.acceptSuggestion(root.suggestionList[suggestionsView.currentIndex], true);
                                 } else {
                                     const inputText = messageInputField.text;
                                     messageInputField.clear();
                                     root.handleInput(inputText);
                                 }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Escape && suggestionsBox.visible) {
+                                root.suggestionList = [];
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Escape && Hermes.busy && messageInputField.text.length === 0) {
                                 Hermes.cancel();

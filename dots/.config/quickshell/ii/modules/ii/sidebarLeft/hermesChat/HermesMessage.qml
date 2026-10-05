@@ -64,13 +64,13 @@ Rectangle {
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.normal
                     color: Appearance.m3colors.m3onSecondaryContainer
-                    text: root.isUser ? (SystemInfo.username || Translation.tr("You")) : root.isNotice ? Translation.tr("Interface") : "Hermes"
+                    text: root.isUser ? (SystemInfo.username || Translation.tr("You")) : root.isNotice ? Translation.tr("Interface") : (root.entry?.label ?? "").length > 0 ? `Hermes · ${root.entry.label}` : "Hermes"
                 }
                 StyledText {
-                    visible: root.entry?.queued ?? false
+                    visible: (root.entry?.queued ?? false) || (root.entry?.steered ?? false)
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
-                    text: Translation.tr("Queued")
+                    text: (root.entry?.steered ?? false) ? Translation.tr("Added to the running turn") : Translation.tr("Queued")
                 }
 
                 ButtonGroup {

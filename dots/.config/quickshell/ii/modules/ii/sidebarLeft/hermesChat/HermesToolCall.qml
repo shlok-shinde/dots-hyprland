@@ -14,7 +14,7 @@ Rectangle {
     property bool expanded: false
 
     readonly property string status: entry?.status ?? ""
-    readonly property bool running: (status === "pending" || status === "in_progress") && !(entry?.done ?? true)
+    readonly property bool running: status === "in_progress" && !(entry?.done ?? true)
     readonly property bool failed: status === "failed"
     readonly property string details: [entry?.input ?? "", entry?.output ?? ""].filter(text => text.length > 0).join("\n\n")
 
@@ -40,6 +40,8 @@ Rectangle {
             return "travel_explore";
         case "think":
             return "psychology";
+        case "agent":
+            return "smart_toy";
         default:
             return "build";
         }
