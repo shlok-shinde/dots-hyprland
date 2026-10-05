@@ -164,6 +164,7 @@ Singleton {
 
             property JsonObject audio: JsonObject {
                 // Values in %
+                property real volumeStep: 2 // the volume keys and bar scrolling; the login screen's keys use it too
                 property JsonObject protection: JsonObject {
                     // Prevent sudden bangs
                     property bool enable: false
@@ -383,6 +384,7 @@ Singleton {
             }
 
             property JsonObject light: JsonObject {
+                property real brightnessStep: 5 // %, the brightness keys; the login screen's keys use it too
                 property JsonObject night: JsonObject {
                     property bool automatic: true
                     property string from: "19:00" // Format: "HH:mm", 24-hour time

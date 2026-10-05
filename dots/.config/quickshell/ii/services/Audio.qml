@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs.modules.common
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Pipewire
 
 /**
@@ -57,16 +58,35 @@ Singleton {
         Audio.source.audio.muted = !Audio.source.audio.muted
     }
 
-    function incrementVolume() {
-        const currentVolume = Audio.value;
-        const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume = Math.min(1, Audio.sink.audio.volume + step);
+    // Finer below 10%. limit: the volume keys may go past 100% (to 150%, as wpctl's -l 1.5)
+    function volumeStep() {
+        return Audio.value < 0.1 ? 0.01 : Config.options.audio.volumeStep / 100;
+    }
+
+    function incrementVolume(limit = 1) {
+        Audio.sink.audio.volume = Math.min(Math.max(limit, Audio.sink.audio.volume), Audio.sink.audio.volume + root.volumeStep());
     }
     
     function decrementVolume() {
-        const currentVolume = Audio.value;
-        const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume -= step;
+        Audio.sink.audio.volume = Math.max(0, Audio.sink.audio.volume - root.volumeStep());
+    }
+
+    // The volume keys (keybinds.lua), so they step like everything else
+    IpcHandler {
+        target: "audio"
+
+        function volumeUp(): void {
+            if (root.ready)
+                root.incrementVolume(1.5);
+            else // PipeWire's output isn't here yet (just after the shell starts)
+                Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", `${Config.options.audio.volumeStep}%+`, "-l", "1.5"]);
+        }
+        function volumeDown(): void {
+            if (root.ready)
+                root.decrementVolume();
+            else
+                Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", `${Config.options.audio.volumeStep}%-`]);
+        }
     }
 
     function setDefaultSink(node) {

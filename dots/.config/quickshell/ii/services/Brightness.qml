@@ -37,14 +37,14 @@ Singleton {
         const focusedName = Hyprland.focusedMonitor.name;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
-            monitor.setBrightness(monitor.brightness + 0.05);
+            monitor.setBrightness(monitor.brightness + Config.options.light.brightnessStep / 100);
     }
 
     function decreaseBrightness(): void {
         const focusedName = Hyprland.focusedMonitor.name;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor && monitor.brightness > 0) 
-            monitor.setBrightness(monitor.brightness - 0.05);
+            monitor.setBrightness(monitor.brightness - Config.options.light.brightnessStep / 100);
         // if brightness is 0, then decrease gamma
         else {
             Hyprsunset.setGamma(Hyprsunset.gamma - 5);

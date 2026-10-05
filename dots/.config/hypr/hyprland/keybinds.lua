@@ -37,13 +37,15 @@ hl.bind("SUPER + J", hl.dsp.global("quickshell:barToggle"), { description = "She
 hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd(qsIsAlive .. " || pkill wlogout || wlogout -p layer-shell"))
 hl.bind("SHIFT + SUPER + ALT + Slash", hl.dsp.exec_cmd("qs -p $HOME/.config/quickshell/$qsConfig/welcome.qml"))
 
+-- Volume and brightness step as the shell's config says (light.brightnessStep, audio.volumeStep);
+-- the fallbacks are for when the shell isn't running
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(qsIpcCall .. " brightness increment || brightnessctl s 5%+"),
     { locked = true, repeating = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(qsIpcCall .. " brightness decrement || brightnessctl s 5%-"),
     { locked = true, repeating = true })
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%+ -l 1.5"),
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(qsIpcCall .. " audio volumeUp || wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%+ -l 1.5"),
     { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-"),
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(qsIpcCall .. " audio volumeDown || wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-"),
     { locked = true, repeating = true })
 
 hl.bind("CTRL + SUPER + T", hl.dsp.global("quickshell:wallpaperSelectorToggle"),
