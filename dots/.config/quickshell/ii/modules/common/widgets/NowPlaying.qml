@@ -21,7 +21,7 @@ ColumnLayout {
     property color colText: Appearance.colors.colOnLayer0
     property color colSubtext: Appearance.colors.colSubtext
     property color colAccent: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colPrimary
-    property color colOnAccent: Appearance.hasAccent ? "white" : Appearance.colors.colOnPrimary
+    property color colOnAccent: Appearance.onAccent
     property real artSize: 64
     property bool compact: false
 

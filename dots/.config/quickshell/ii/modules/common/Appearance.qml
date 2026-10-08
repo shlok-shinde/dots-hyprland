@@ -39,6 +39,16 @@ Singleton {
     property color accent: !hasAccent ? colors.colPrimary
         : (!m3colors.darkmode && Qt.color(Config.options.appearance.liquidGlass.accentColor).hslLightness > 0.85) ? "#1A1A1A"
         : Config.options.appearance.liquidGlass.accentColor
+    // Text and icons on the accent: white, unless the accent is too light for
+    // it to stand out (under 3:1 contrast, as on the White or a yellow swatch),
+    // then near-black
+    property color onAccent: {
+        if (!hasAccent)
+            return colors.colOnPrimary;
+        const lin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        const l = 0.2126 * lin(accent.r) + 0.7152 * lin(accent.g) + 0.0722 * lin(accent.b);
+        return 1.05 / (l + 0.05) >= 3 ? "white" : "#1A1A1A";
+    }
     property bool liquidCapsuleBar: liquidGlass && (Config?.options.appearance.liquidGlass.capsuleBar ?? true)
     property bool liquidModularSidebar: liquidGlass && (Config?.options.appearance.liquidGlass.modularSidebar ?? true)
     property real backgroundTransparency: liquidGlass ? 1 - Config.options.appearance.liquidGlass.tint
