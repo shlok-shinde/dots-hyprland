@@ -6,6 +6,7 @@ import qs.modules.common.functions
 
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Services.Mpris
 import Quickshell.Hyprland
 
@@ -37,8 +38,23 @@ Item {
             } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
                 activePlayer.next();
             } else if (event.button === Qt.LeftButton) {
-                GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+                popover.toggle();
             }
+        }
+    }
+
+    MediaPopup {
+        id: popover
+        anchorItem: root
+    }
+    // With glass, the media controls shortcut opens this panel on the focused screen
+    Connections {
+        target: GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (!GlobalStates.mediaControlsOpen || !Appearance.liquidGlass || Hyprland.focusedMonitor?.name !== root.QsWindow.window?.screen?.name)
+                return;
+            GlobalStates.mediaControlsOpen = false;
+            popover.toggle();
         }
     }
 

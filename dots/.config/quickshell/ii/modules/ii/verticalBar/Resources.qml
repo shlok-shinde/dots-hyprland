@@ -9,7 +9,9 @@ MouseArea {
     property bool alwaysShowAllResources: false
     implicitHeight: columnLayout.implicitHeight
     implicitWidth: columnLayout.implicitWidth
-    hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onPressed: popover.toggle()
 
     ColumnLayout {
         id: columnLayout
@@ -40,6 +42,7 @@ MouseArea {
     }
 
     Bar.ResourcesPopup {
-        hoverTarget: root
+        id: popover
+        anchorItem: root
     }
 }

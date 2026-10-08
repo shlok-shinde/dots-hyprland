@@ -3,91 +3,67 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
-StyledPopup {
+BarPopover {
     id: root
+    name: "resources"
 
-    // Helper function to format KB to GB
     function formatKB(kb) {
-        return (kb / (1024 * 1024)).toFixed(1) + " GB";
+        return (kb / (1024 * 1024)).toFixed(1);
     }
 
-    Row {
+    ColumnLayout {
         anchors.centerIn: parent
         spacing: 12
 
-        Column {
-            anchors.top: parent.top
-            spacing: 8
-
-            StyledPopupHeaderRow {
-                icon: "memory"
-                label: "RAM"
-            }
-            Column {
-                spacing: 4
-                StyledPopupValueRow {
-                    icon: "clock_loader_60"
-                    label: Translation.tr("Used:")
-                    value: root.formatKB(ResourceUsage.memoryUsed)
-                }
-                StyledPopupValueRow {
-                    icon: "check_circle"
-                    label: Translation.tr("Free:")
-                    value: root.formatKB(ResourceUsage.memoryFree)
-                }
-                StyledPopupValueRow {
-                    icon: "empty_dashboard"
-                    label: Translation.tr("Total:")
-                    value: root.formatKB(ResourceUsage.memoryTotal)
-                }
-            }
+        PopoverHeader {
+            Layout.fillWidth: true
+            icon: "monitoring"
+            title: Translation.tr("System")
+            detail: Translation.tr("Up %1").arg(DateTime.uptime)
         }
 
-        Column {
-            visible: ResourceUsage.swapTotal > 0
-            anchors.top: parent.top
-            spacing: 8
+        GridLayout {
+            // In one row up to three, two by two for four, then rows of three
+            columns: visibleChildren.length === 4 ? 2 : Math.min(3, visibleChildren.length)
+            columnSpacing: 8
+            rowSpacing: 8
 
-            StyledPopupHeaderRow {
-                icon: "swap_horiz"
-                label: "Swap"
-            }
-            Column {
-                spacing: 4
-                StyledPopupValueRow {
-                    icon: "clock_loader_60"
-                    label: Translation.tr("Used:")
-                    value: root.formatKB(ResourceUsage.swapUsed)
-                }
-                StyledPopupValueRow {
-                    icon: "check_circle"
-                    label: Translation.tr("Free:")
-                    value: root.formatKB(ResourceUsage.swapFree)
-                }
-                StyledPopupValueRow {
-                    icon: "empty_dashboard"
-                    label: Translation.tr("Total:")
-                    value: root.formatKB(ResourceUsage.swapTotal)
-                }
-            }
-        }
-
-        Column {
-            anchors.top: parent.top
-            spacing: 8
-
-            StyledPopupHeaderRow {
+            PopoverTile {
                 icon: "planner_review"
                 label: "CPU"
+                value: ResourceUsage.cpuUsage
+                history: ResourceUsage.cpuUsageHistory
+                detail: ResourceUsage.maxAvailableCpuString !== "--" ? Translation.tr("up to %1").arg(ResourceUsage.maxAvailableCpuString) : ""
+                warning: value * 100 >= Config.options.bar.resources.cpuWarningThreshold
             }
-            Column {
-                spacing: 4
-                StyledPopupValueRow {
-                    icon: "bolt"
-                    label: Translation.tr("Load:")
-                    value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
-                }
+            PopoverTile {
+                icon: "memory"
+                label: Translation.tr("Memory")
+                value: ResourceUsage.memoryUsedPercentage
+                history: ResourceUsage.memoryUsageHistory
+                detail: Translation.tr("%1 of %2 GB").arg(root.formatKB(ResourceUsage.memoryUsed)).arg(root.formatKB(ResourceUsage.memoryTotal))
+                warning: value * 100 >= Config.options.bar.resources.memoryWarningThreshold
+            }
+            PopoverTile {
+                visible: ResourceUsage.swapTotal > 1
+                icon: "swap_horiz"
+                label: Translation.tr("Swap")
+                value: ResourceUsage.swapUsedPercentage
+                history: ResourceUsage.swapUsageHistory
+                detail: Translation.tr("%1 of %2 GB").arg(root.formatKB(ResourceUsage.swapUsed)).arg(root.formatKB(ResourceUsage.swapTotal))
+                warning: value * 100 >= Config.options.bar.resources.swapWarningThreshold
+            }
+        }
+
+        PopoverAction {
+            Layout.fillWidth: true
+            symbol: "open_in_new"
+            text: Translation.tr("Open system monitor")
+            onClicked: {
+                Quickshell.execDetached(["bash", "-c", Config.options.apps.taskManager]);
+                root.close();
             }
         }
     }

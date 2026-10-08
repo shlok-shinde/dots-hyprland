@@ -51,6 +51,7 @@ LazyLoader {
             right: Appearance.sizes.verticalBarWidth
             bottom: Appearance.sizes.barHeight
         }
+        screen: root.hoverTarget?.QsWindow.window?.screen ?? null
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
 
@@ -70,8 +71,9 @@ LazyLoader {
             }
             implicitWidth: root.contentItem.implicitWidth + margin * 2
             implicitHeight: root.contentItem.implicitHeight + margin * 2
-            color: Appearance.m3colors.m3surfaceContainer
-            radius: Appearance.rounding.small
+            // In glass mode this is the glass, like the chips' panels (BarPopover)
+            color: Appearance.liquidGlass ? Appearance.colors.colLayer0 : Appearance.m3colors.m3surfaceContainer
+            radius: Appearance.liquidGlass ? Appearance.rounding.large : Appearance.rounding.small
             children: [root.contentItem]
 
             border.width: 1

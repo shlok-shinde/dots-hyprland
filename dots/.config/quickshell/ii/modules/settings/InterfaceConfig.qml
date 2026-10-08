@@ -223,6 +223,37 @@ ContentPage {
                     Config.options.lock.materialShapeChars = checked;
                 }
             }
+
+            ConfigSwitch {
+                buttonIcon: "music_note"
+                text: Translation.tr('Show media controls')
+                checked: Config.options.lock.showMedia
+                onCheckedChanged: {
+                    Config.options.lock.showMedia = checked;
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "notifications"
+                text: Translation.tr('Show new notifications')
+                checked: Config.options.lock.notifications.enable
+                onCheckedChanged: {
+                    Config.options.lock.notifications.enable = checked;
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "visibility"
+                enabled: Config.options.lock.notifications.enable
+                text: Translation.tr('Show what notifications say')
+                checked: Config.options.lock.notifications.showContent
+                onCheckedChanged: {
+                    Config.options.lock.notifications.showContent = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Off: the lock screen only shows which app sent them")
+                }
+            }
         }
         ContentSubsection {
             title: Translation.tr("Style: Blurred")

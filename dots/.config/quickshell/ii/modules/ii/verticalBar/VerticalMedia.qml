@@ -6,6 +6,8 @@ import qs.modules.common.functions
 
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 
 import qs.modules.ii.bar as Bar
@@ -28,7 +30,8 @@ MouseArea {
     }
 
     acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
-    hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
     onPressed: (event) => {
         if (event.button === Qt.MiddleButton) {
             activePlayer.togglePlaying();
@@ -37,7 +40,7 @@ MouseArea {
         } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
             activePlayer.next();
         } else if (event.button === Qt.LeftButton) {
-            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+            popover.toggle();
         }
     }
 
@@ -66,24 +69,18 @@ MouseArea {
         }
     }
 
-    Bar.StyledPopup {
-        hoverTarget: root
-        active: GlobalStates.mediaControlsOpen ? false : root.containsMouse
-
-        Column {
-            anchors.centerIn: parent
-            spacing: 4
-
-            Bar.StyledPopupHeaderRow {
-                icon: "music_note"
-                label: Translation.tr("Media")
-            }
-
-            StyledText {
-                color: Appearance.colors.colOnSurfaceVariant
-                text: `${cleanedTitle}${activePlayer?.trackArtist ? '\n' + activePlayer.trackArtist : ''}`
-            }
+    Bar.MediaPopup {
+        id: popover
+        anchorItem: root
+    }
+    // With glass, the media controls shortcut opens this panel on the focused screen
+    Connections {
+        target: GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (!GlobalStates.mediaControlsOpen || !Appearance.liquidGlass || Hyprland.focusedMonitor?.name !== root.QsWindow.window?.screen?.name)
+                return;
+            GlobalStates.mediaControlsOpen = false;
+            popover.toggle();
         }
     }
-
 }

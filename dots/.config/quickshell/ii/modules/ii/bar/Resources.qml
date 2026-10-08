@@ -9,7 +9,9 @@ MouseArea {
     property bool alwaysShowAllResources: false
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight
-    hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onPressed: popover.toggle()
 
     RowLayout {
         id: rowLayout
@@ -48,6 +50,7 @@ MouseArea {
     }
 
     ResourcesPopup {
-        hoverTarget: root
+        id: popover
+        anchorItem: root
     }
 }

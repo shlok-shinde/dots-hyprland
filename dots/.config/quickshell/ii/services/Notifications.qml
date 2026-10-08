@@ -75,6 +75,7 @@ Singleton {
 
     property bool silent: false
     property int unread: 0
+    property real readUntil: Date.now() // notifications after this are unseen (the lock screen lists them)
     property var filePath: Directories.notificationsPath
     property list<Notif> list: []
     property var popupList: list.filter((notif) => notif.popup);
@@ -187,6 +188,7 @@ Singleton {
 
     function markAllRead() {
         root.unread = 0;
+        root.readUntil = Date.now();
     }
 
     function discardNotification(id) {

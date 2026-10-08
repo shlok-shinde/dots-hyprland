@@ -51,7 +51,7 @@ Scope {
                     }
                 }
                 property bool superShow: false
-                property bool mustShow: hoverRegion.containsMouse || superShow
+                property bool mustShow: hoverRegion.containsMouse || superShow || GlobalStates.barPopover.endsWith(`@${barLoader.modelData.name}`) // a chip's panel hangs from it
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone: (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows)) ? 0 :
                     Appearance.sizes.baseBarHeight + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)

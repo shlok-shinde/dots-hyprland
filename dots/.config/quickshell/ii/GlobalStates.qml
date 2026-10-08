@@ -10,6 +10,7 @@ pragma ComponentBehavior: Bound
 Singleton {
     id: root
     property bool barOpen: true
+    property string barPopover: "" // the bar chip panel that is open, "<name>@<screen>" (bar/BarPopover.qml)
     property bool crosshairOpen: false
     property bool sidebarLeftOpen: false
     property bool sidebarRightOpen: false

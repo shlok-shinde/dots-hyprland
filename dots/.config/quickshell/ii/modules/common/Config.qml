@@ -411,6 +411,11 @@ Singleton {
                     property bool requirePasswordToPower: false
                 }
                 property bool materialShapeChars: true
+                property bool showMedia: true // what's playing, with its controls
+                property JsonObject notifications: JsonObject {
+                    property bool enable: true // the ones you haven't seen yet
+                    property bool showContent: true // off: only which app, not what it says
+                }
             }
 
             property JsonObject media: JsonObject {

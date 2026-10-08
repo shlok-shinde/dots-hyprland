@@ -40,10 +40,13 @@ Item {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
-        hoverEnabled: !Config.options.bar.tooltips.clickToShow
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onPressed: popover.toggle()
 
         ClockWidgetPopup {
-            hoverTarget: mouseArea
+            id: popover
+            anchorItem: mouseArea
         }
     }
 }

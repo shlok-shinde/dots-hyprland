@@ -73,7 +73,8 @@ Scope {
 
     Loader {
         id: mediaControlsLoader
-        active: GlobalStates.mediaControlsOpen
+        // with glass the bar's media chip opens its own panel instead (bar/MediaPopup.qml)
+        active: GlobalStates.mediaControlsOpen && !Appearance.liquidGlass
         onActiveChanged: {
             if (!mediaControlsLoader.active && root.realPlayers.length === 0) {
                 GlobalStates.mediaControlsOpen = false;

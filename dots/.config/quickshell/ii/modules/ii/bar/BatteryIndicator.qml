@@ -16,7 +16,9 @@ MouseArea {
     implicitWidth: batteryProgress.implicitWidth
     implicitHeight: Appearance.sizes.barHeight
 
-    hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onPressed: batteryPopup.toggle()
 
     ClippedProgressBar {
         id: batteryProgress
@@ -58,6 +60,6 @@ MouseArea {
 
     BatteryPopup {
         id: batteryPopup
-        hoverTarget: root
+        anchorItem: root
     }
 }
