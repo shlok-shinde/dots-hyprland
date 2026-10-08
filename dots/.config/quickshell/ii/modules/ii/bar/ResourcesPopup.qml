@@ -1,9 +1,9 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.services
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 
 BarPopover {
     id: root
@@ -62,7 +62,7 @@ BarPopover {
             symbol: "open_in_new"
             text: Translation.tr("Open system monitor")
             onClicked: {
-                Quickshell.execDetached(["bash", "-c", Config.options.apps.taskManager]);
+                Session.launchTaskManager();
                 root.close();
             }
         }
