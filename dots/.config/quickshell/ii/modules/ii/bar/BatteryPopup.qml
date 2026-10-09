@@ -128,7 +128,7 @@ BarPopover {
                     colBackgroundToggled: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colPrimary
                     colBackgroundToggledHover: colBackgroundToggled
                     onClicked: PowerProfiles.profile = modelData.profile
-                    readonly property color fg: toggled ? Appearance.onAccent : Appearance.colors.colOnLayer0
+                    readonly property color fg: toggled ? Appearance.colOnAccent : Appearance.colors.colOnLayer0
 
                     contentItem: ColumnLayout {
                         anchors.centerIn: parent

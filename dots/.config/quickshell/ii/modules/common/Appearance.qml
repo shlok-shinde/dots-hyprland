@@ -41,8 +41,9 @@ Singleton {
         : Config.options.appearance.liquidGlass.accentColor
     // Text and icons on the accent: white, unless the accent is too light for
     // it to stand out (under 3:1 contrast, as on the White or a yellow swatch),
-    // then near-black
-    property color onAccent: {
+    // then near-black. (Not "onAccent": a name that starts with "on" and a
+    // capital is a handler for the "accent" property's changes, not a property)
+    property color colOnAccent: {
         if (!hasAccent)
             return colors.colOnPrimary;
         const lin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

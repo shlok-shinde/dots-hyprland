@@ -23,7 +23,7 @@ Item {
     property color colText: Appearance.colors.colOnLayer0
     property color colSubtext: Appearance.colors.colSubtext
     property color colAccent: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colPrimary
-    property color colOnAccent: Appearance.onAccent
+    property color colOnAccent: Appearance.colOnAccent
     property real artSize: 64
     property bool compact: false
     property bool visualizer: true

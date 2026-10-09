@@ -196,7 +196,7 @@ ButtonMouseArea {
         Colorizer {
             z: 5
             anchors.fill: numbersGrid
-            colorizationColor: Appearance.onAccent // the number on the accent dot
+            colorizationColor: Appearance.colOnAccent // the number on the accent dot
             sourceColor: Appearance.colors.colOnSecondaryContainer
 
             source: activeIndicator
