@@ -42,6 +42,7 @@ Scope {
             target: GlobalStates
             function onOverviewOpenChanged() {
                 if (!GlobalStates.overviewOpen) {
+                    GlobalStates.appDrawerOpen = false;
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
                     GlobalFocusGrab.dismiss();
@@ -80,12 +81,18 @@ Scope {
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
                     GlobalStates.overviewOpen = false;
+                } else if (appDrawerLoader.item?.visible && event.text && event.text.length === 1 && event.text.charCodeAt(0) >= 0x20) {
+                    // Typing while in the apps searches
+                    searchWidget.focusSearchInput();
+                    searchWidget.setSearchingText(panelWindow.searchingText + event.text);
+                    event.accepted = true;
                 }
             }
 
             SearchWidget {
                 id: searchWidget
                 anchors.horizontalCenter: parent.horizontalCenter
+                onNavigateDown: appDrawerLoader.item?.focusGrid() // Down: into the apps
                 Synchronizer on searchingText {
                     property alias source: panelWindow.searchingText
                 }
@@ -94,10 +101,22 @@ Scope {
             Loader {
                 id: overviewLoader
                 anchors.horizontalCenter: parent.horizontalCenter
-                active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
+                active: GlobalStates.overviewOpen && !GlobalStates.appDrawerOpen && (Config?.options.overview.enable ?? true)
+                visible: active // an unloaded Loader keeps its last height: don't let it push the apps down
                 sourceComponent: OverviewWidget {
                     screen: panelWindow.screen
                     visible: (panelWindow.searchingText == "")
+                }
+            }
+
+            Loader {
+                id: appDrawerLoader
+                anchors.horizontalCenter: parent.horizontalCenter
+                active: GlobalStates.overviewOpen && GlobalStates.appDrawerOpen
+                visible: active
+                sourceComponent: AppDrawer {
+                    visible: (panelWindow.searchingText == "")
+                    onLeaveUp: searchWidget.focusSearchInput()
                 }
             }
         }
@@ -110,6 +129,16 @@ Scope {
         }
         overviewScope.dontAutoCancelSearch = true;
         panelWindow.setSearchingText(Config.options.search.prefix.clipboard);
+        GlobalStates.overviewOpen = true;
+    }
+
+    // The search with every app under it, in place of the workspaces
+    function toggleAppDrawer() {
+        if (GlobalStates.overviewOpen) {
+            GlobalStates.overviewOpen = false;
+            return;
+        }
+        GlobalStates.appDrawerOpen = true;
         GlobalStates.overviewOpen = true;
     }
 
@@ -134,6 +163,9 @@ Scope {
         }
         function close() {
             GlobalStates.overviewOpen = false;
+        }
+        function appDrawerToggle() {
+            overviewScope.toggleAppDrawer();
         }
         function open() {
             GlobalStates.overviewOpen = true;

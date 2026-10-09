@@ -16,6 +16,25 @@ Scope { // Scope
     id: root
     property bool pinned: Config.options?.dock.pinnedOnStartup ?? false
 
+    // A click on the dock first closes an open overview (the focus grab lets
+    // go), then reaches the button: don't let it open again right away
+    property real overviewClosedAt: 0
+    Connections {
+        target: GlobalStates
+        function onOverviewOpenChanged() {
+            if (!GlobalStates.overviewOpen)
+                root.overviewClosedAt = Date.now();
+        }
+    }
+    function toggleAppDrawer() {
+        if (GlobalStates.overviewOpen) {
+            GlobalStates.overviewOpen = false;
+        } else if (Date.now() - root.overviewClosedAt > 300) {
+            GlobalStates.appDrawerOpen = true;
+            GlobalStates.overviewOpen = true;
+        }
+    }
+
     Variants {
         // For each monitor
         model: Quickshell.screens
@@ -128,7 +147,7 @@ Scope { // Scope
                             DockSeparator {}
                             DockButton {
                                 Layout.fillHeight: true
-                                onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
+                                onClicked: root.toggleAppDrawer() // search, with every app under it
                                 topInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 bottomInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 contentItem: MaterialSymbol {

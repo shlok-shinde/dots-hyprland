@@ -14,6 +14,7 @@ RowLayout {
     property bool animateWidth: false
     property alias searchInput: searchInput
     property string searchingText
+    signal navigateDown() // Down with nothing typed: to what's under the bar
 
     function forceFocus() {
         searchInput.forceActiveFocus();
@@ -96,6 +97,10 @@ RowLayout {
                 const tabbedText = LauncherSearch.results[0].name;
                 LauncherSearch.query = tabbedText;
                 searchInput.text = tabbedText;
+                event.accepted = true;
+            } else if (event.key === Qt.Key_Down && root.searchingText === "") {
+                // Before the field takes it (it moves the cursor with Down)
+                root.navigateDown();
                 event.accepted = true;
             }
         }
