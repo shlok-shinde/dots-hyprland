@@ -199,6 +199,8 @@ MouseArea {
                 Layout.fillWidth: true
                 artSize: 52
                 compact: true
+                visualizerBleed: mediaCard.padding
+                visualizerRadius: mediaCard.radius
             }
         }
 

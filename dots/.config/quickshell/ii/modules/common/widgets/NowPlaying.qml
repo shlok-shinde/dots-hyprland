@@ -13,9 +13,11 @@ import Quickshell.Services.Mpris
  * What's playing, with its controls: cover, title and artist, a seek line and
  * previous / play-pause / next. No background of its own: it sits on glass
  * (a bar chip's panel, the lock screen). Size it by width. `compact` puts
- * the controls beside the title and the times beside the seek line.
+ * the controls beside the title and the times beside the seek line. While it
+ * plays, the sound runs as a faint wave behind it (cava) and the seek line
+ * waves, as on Android.
  */
-ColumnLayout {
+Item {
     id: root
     property MprisPlayer player: MprisController.activePlayer
     property color colText: Appearance.colors.colOnLayer0
@@ -24,8 +26,15 @@ ColumnLayout {
     property color colOnAccent: Appearance.onAccent
     property real artSize: 64
     property bool compact: false
+    property bool visualizer: true
+    // How far the wave reaches past its edges, to the pane's own (its padding),
+    // and that pane's corner radius
+    property real visualizerBleed: 0
+    property real visualizerRadius: 0
 
-    spacing: 10
+    implicitWidth: column.implicitWidth
+    implicitHeight: column.implicitHeight
+    readonly property bool playing: root.player?.isPlaying ?? false
 
     readonly property real progress: (root.player?.length ?? 0) > 0 ? Math.min(1, root.player.position / root.player.length) : 0
 
@@ -63,168 +72,222 @@ ColumnLayout {
         }
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 12
-
-        Rectangle { // Cover
-            id: artFrame
-            implicitWidth: root.artSize
-            implicitHeight: root.artSize
-            radius: Appearance.rounding.small
-            color: ColorUtils.transparentize(root.colText, 0.88)
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                visible: art.status !== Image.Ready
-                text: "music_note"
-                iconSize: root.artSize * 0.45
-                color: root.colSubtext
-            }
-            Image {
-                id: art
-                anchors.fill: parent
-                source: root.artSource
-                fillMode: Image.PreserveAspectCrop
-                sourceSize: Qt.size(root.artSize * 2, root.artSize * 2)
-                asynchronous: true
-                cache: false
-                visible: false
-            }
-            OpacityMask {
-                anchors.fill: parent
-                visible: art.status === Image.Ready
-                source: art
-                maskSource: Rectangle {
-                    width: artFrame.width
-                    height: artFrame.height
-                    radius: artFrame.radius
+    // The sound, as a wave rising behind the seek line and controls
+    property list<real> visualizerPoints: []
+    Process {
+        running: root.visualizer && root.visible && root.playing
+        command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
+        onRunningChanged: {
+            if (!running)
+                root.visualizerPoints = [];
+        }
+        stdout: SplitParser {
+            onRead: data => root.visualizerPoints = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p))
+        }
+    }
+    Item {
+        id: wave
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+            margins: -root.visualizerBleed
+        }
+        height: parent.height * 0.7 + root.visualizerBleed
+        visible: root.visualizer
+        WaveVisualizer {
+            live: root.playing
+            points: root.visualizerPoints
+            color: root.colAccent
+        }
+        layer.enabled: root.visualizerRadius > 0
+        layer.effect: OpacityMask { // the pane's rounded bottom corners
+            maskSource: Rectangle {
+                width: wave.width
+                height: wave.height
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.topMargin: -radius
+                    radius: root.visualizerRadius
                 }
+                color: "transparent"
+            }
+        }
+    }
+
+    ColumnLayout {
+        id: column
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+        spacing: 10
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Rectangle { // Cover
+                id: artFrame
+                implicitWidth: root.artSize
+                implicitHeight: root.artSize
+                radius: Appearance.rounding.small
+                color: ColorUtils.transparentize(root.colText, 0.88)
+
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: art.status !== Image.Ready
+                    text: "music_note"
+                    iconSize: root.artSize * 0.45
+                    color: root.colSubtext
+                }
+                Image {
+                    id: art
+                    anchors.fill: parent
+                    source: root.artSource
+                    fillMode: Image.PreserveAspectCrop
+                    sourceSize: Qt.size(root.artSize * 2, root.artSize * 2)
+                    asynchronous: true
+                    cache: false
+                    visible: false
+                }
+                OpacityMask {
+                    anchors.fill: parent
+                    visible: art.status === Image.Ready
+                    source: art
+                    maskSource: Rectangle {
+                        width: artFrame.width
+                        height: artFrame.height
+                        radius: artFrame.radius
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+                StyledText {
+                    Layout.fillWidth: true
+                    text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || Translation.tr("Nothing playing")
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    color: root.colText
+                    elide: Text.ElideRight
+                    animateChange: true
+                    animationDistanceX: 6
+                    animationDistanceY: 0
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: root.player?.trackArtist ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: root.colSubtext
+                    elide: Text.ElideRight
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: root.player?.identity ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                    opacity: 0.8
+                    elide: Text.ElideRight
+                }
+            }
+
+            Loader {
+                active: root.compact
+                visible: active
+                sourceComponent: controls
             }
         }
 
+        // Seek line and times
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 1
-            StyledText {
+            visible: (root.player?.length ?? 0) > 0
+            spacing: 3
+
+            RowLayout {
                 Layout.fillWidth: true
-                text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || Translation.tr("Nothing playing")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                color: root.colText
-                elide: Text.ElideRight
-                animateChange: true
-                animationDistanceX: 6
-                animationDistanceY: 0
+                spacing: 8
+                StyledText {
+                    visible: root.compact
+                    text: positionText.text
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
+                Item { // Wavy while it plays; draggable when the player can seek
+                    Layout.fillWidth: true
+                    implicitHeight: seekSlider.visible ? seekSlider.implicitHeight : seekBar.implicitHeight
+                    StyledSlider {
+                        id: seekSlider
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
+                        visible: root.player?.canSeek ?? false
+                        configuration: StyledSlider.Configuration.Wavy
+                        animateWave: root.playing
+                        waveAmplitudeMultiplier: root.playing ? 0.5 : 0
+                        highlightColor: root.colAccent
+                        handleColor: root.colAccent
+                        trackColor: ColorUtils.transparentize(root.colText, 0.82)
+                        tooltipContent: StringUtils.friendlyTimeForSeconds(value * (root.player?.length ?? 0))
+                        value: root.progress
+                        onMoved: root.player.position = value * root.player.length
+                    }
+                    StyledProgressBar {
+                        id: seekBar
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
+                        visible: !seekSlider.visible
+                        wavy: root.playing
+                        highlightColor: root.colAccent
+                        trackColor: ColorUtils.transparentize(root.colText, 0.82)
+                        value: root.progress
+                    }
+                }
+                StyledText {
+                    visible: root.compact
+                    text: lengthText.text
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
             }
-            StyledText {
+            RowLayout {
                 Layout.fillWidth: true
-                visible: text.length > 0
-                text: root.player?.trackArtist ?? ""
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: root.colSubtext
-                elide: Text.ElideRight
-            }
-            StyledText {
-                Layout.fillWidth: true
-                visible: text.length > 0
-                text: root.player?.identity ?? ""
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: root.colSubtext
-                opacity: 0.8
-                elide: Text.ElideRight
+                visible: !root.compact
+                StyledText {
+                    id: positionText
+                    text: StringUtils.friendlyTimeForSeconds(seekSlider.pressed ? seekSlider.value * root.player.length : root.player?.position)
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                StyledText {
+                    id: lengthText
+                    text: StringUtils.friendlyTimeForSeconds(root.player?.length)
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
             }
         }
 
         Loader {
-            active: root.compact
+            Layout.alignment: Qt.AlignHCenter
+            active: !root.compact
             visible: active
             sourceComponent: controls
         }
-    }
 
-    // Seek line and times
-    ColumnLayout {
-        Layout.fillWidth: true
-        visible: (root.player?.length ?? 0) > 0
-        spacing: 3
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            StyledText {
-                visible: root.compact
-                text: positionText.text
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: root.colSubtext
-            }
-            Item {
-                Layout.fillWidth: true
-                implicitHeight: 14
-                Rectangle {
-                    id: track
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width
-                    height: seekArea.containsMouse ? 6 : 4
-                    radius: height / 2
-                    color: ColorUtils.transparentize(root.colText, 0.82)
-                    Behavior on height {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
-                    Rectangle {
-                        height: parent.height
-                        width: Math.max(height, parent.width * (seekArea.pressed ? seekArea.preview : root.progress))
-                        radius: height / 2
-                        color: root.colAccent
-                    }
-                }
-                MouseArea {
-                    id: seekArea
-                    anchors.fill: parent
-                    enabled: root.player?.canSeek ?? false
-                    hoverEnabled: true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    property real preview: 0
-                    onPressed: mouse => preview = Math.max(0, Math.min(1, mouse.x / width))
-                    onPositionChanged: mouse => {
-                        if (pressed)
-                            preview = Math.max(0, Math.min(1, mouse.x / width));
-                    }
-                    onReleased: root.player.position = preview * root.player.length
-                }
-            }
-            StyledText {
-                visible: root.compact
-                text: lengthText.text
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: root.colSubtext
-            }
-        }
-        RowLayout {
-            Layout.fillWidth: true
-            visible: !root.compact
-            StyledText {
-                id: positionText
-                text: StringUtils.friendlyTimeForSeconds(seekArea.pressed ? seekArea.preview * root.player.length : root.player?.position)
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: root.colSubtext
-            }
-            Item {
-                Layout.fillWidth: true
-            }
-            StyledText {
-                id: lengthText
-                text: StringUtils.friendlyTimeForSeconds(root.player?.length)
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: root.colSubtext
-            }
-        }
-    }
-
-    Loader {
-        Layout.alignment: Qt.AlignHCenter
-        active: !root.compact
-        visible: active
-        sourceComponent: controls
     }
 
     Component {

@@ -67,6 +67,8 @@ BarPopover {
             Layout.fillWidth: true
             visible: MprisController.activePlayer !== null
             player: MprisController.activePlayer
+            visualizerBleed: root.padding
+            visualizerRadius: Appearance.rounding.large
         }
 
         ColumnLayout { // Nothing to control
