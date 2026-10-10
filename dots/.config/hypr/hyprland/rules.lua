@@ -14,6 +14,9 @@ hl.window_rule({match = {title = "^(Select a File)(.*)$" },                  flo
 hl.window_rule({match = {title = "^(Choose wallpaper)(.*)$" },               center = true})
 hl.window_rule({match = {title = "^(Choose wallpaper)(.*)$" },               float = true})
 hl.window_rule({match = {title = "^(Choose wallpaper)(.*)$" },               size = {"(monitor_w*0.60)", "(monitor_h*0.65)"} })
+-- Nothing Liquid's installer (to update or remove it): a window, not a tile
+hl.window_rule({match = {class = "^(io\\.github\\.shlok_shinde\\.NothingLiquid)$" }, center = true})
+hl.window_rule({match = {class = "^(io\\.github\\.shlok_shinde\\.NothingLiquid)$" }, float = true})
 hl.window_rule({match = {title = "^(Open Folder)(.*)$" },                    center = true})
 hl.window_rule({match = {title = "^(Open Folder)(.*)$" },                    float = true})
 hl.window_rule({match = {title = "^(Select the mod file to import)(.*)$" },  center = true}) -- Gale
