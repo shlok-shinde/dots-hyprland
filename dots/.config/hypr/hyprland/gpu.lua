@@ -29,6 +29,29 @@ if found.dgpu == "screen" and found.igpu ~= "screen" then
     hl.env("LIBVA_DRIVER_NAME", "nvidia")
     hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
     hl.env("NVD_BACKEND", "direct")
+elseif found.dgpu == "screen" then
+    hl.env("AQ_DRM_DEVICES", "/dev/dri/nl-igpu:/dev/dri/nl-dgpu")
 elseif found.igpu then
-    hl.env("AQ_DRM_DEVICES", found.dgpu == "screen" and "/dev/dri/nl-igpu:/dev/dri/nl-dgpu" or "/dev/dri/nl-igpu")
+    hl.env("AQ_DRM_DEVICES", "/dev/dri/nl-igpu")
+    -- Hyprland's EGL lists every GPU's driver, and NVIDIA's keeps the GPU open from
+    -- then on: so Hyprland starts with Mesa's EGL alone. Once it's up, the apps it
+    -- starts get them all again (NVIDIA's first, glvnd's usual order), or prime-run
+    -- couldn't reach the NVIDIA GPU. (A variable can't be unset from here.) A config
+    -- reload, when NL_GPU_STARTED is set, leaves it as it is.
+    local list = io.popen("ls /etc/glvnd/egl_vendor.d/*.json /usr/share/glvnd/egl_vendor.d/*.json 2>/dev/null")
+    local vendors, mesa = {}, nil
+    if list then
+        for path in (list:read("*a") or ""):gmatch("[^\n]+") do
+            table.insert(vendors, path)
+            if path:find("mesa") then mesa = mesa or path end
+        end
+        list:close()
+    end
+    if mesa and os.getenv("NL_GPU_STARTED") == nil then
+        hl.env("__EGL_VENDOR_LIBRARY_FILENAMES", mesa)
+        hl.on("hyprland.start", function()
+            hl.env("__EGL_VENDOR_LIBRARY_FILENAMES", table.concat(vendors, ":"))
+            hl.env("NL_GPU_STARTED", "1")
+        end)
+    end
 end
