@@ -23,6 +23,7 @@ Singleton {
     property Component geminiApiStrategy: GeminiApiStrategy {}
     property Component openaiApiStrategy: OpenAiApiStrategy {}
     property Component mistralApiStrategy: MistralApiStrategy {}
+    property Component openclawApiStrategy: OpenClawApiStrategy {}
     readonly property string interfaceRole: "interface"
     readonly property string apiKeyEnvVarName: "API_KEY"
 
@@ -82,6 +83,9 @@ Singleton {
     // OpenAI: https://platform.openai.com/docs/guides/function-calling
     property string currentTool: Config?.options.ai.tool ?? "search"
     property var tools: {
+        "openclaw": { // OpenClaw runs its own tools
+            "none": [],
+        },
         "gemini": {
             "functions": [{"functionDeclarations": [
                 {
@@ -302,6 +306,7 @@ Singleton {
         "openai": openaiApiStrategy.createObject(this),
         "gemini": geminiApiStrategy.createObject(this),
         "mistral": mistralApiStrategy.createObject(this),
+        "openclaw": openclawApiStrategy.createObject(this),
     }
     property ApiStrategy currentApiStrategy: apiStrategies[models[currentModelId]?.api_format || "openai"]
 
@@ -324,8 +329,42 @@ Singleton {
     property string pendingFilePath: ""
 
     Component.onCompleted: {
+        root.addOpenClawModel(); // (before setModel: it may be the persisted one)
         setModel(currentModelId, false, false); // Do necessary setup for model
         root.addUserModels() // Config onReadyChanged above might not fire if config is loaded before this service
+    }
+
+    // OpenClaw's gateway as a model, once OpenClaw is installed (services/OpenClaw.qml);
+    // the one in use when it's the sidebar's assistant
+    function addOpenClawModel() {
+        if (!OpenClaw.available || root.models[OpenClaw.modelId])
+            return;
+        root.addModel(OpenClaw.modelId, {
+            "name": "OpenClaw",
+            "icon": "spark-symbolic",
+            "description": Translation.tr("Your OpenClaw agent, through its gateway on this computer\nIts own model, tools, memory and skills"),
+            "homepage": "https://openclaw.ai",
+            "endpoint": OpenClaw.endpoint,
+            "model": "openclaw/default",
+            "requires_key": false,
+            "api_format": "openclaw",
+        });
+        root.modelList = Object.keys(root.models);
+        if (Config.options.ai.assistant === "openclaw")
+            root.setModel(OpenClaw.modelId, false, true);
+    }
+    Connections {
+        target: OpenClaw
+        function onAvailableChanged() {
+            root.addOpenClawModel();
+        }
+    }
+    Connections { // Picked in the sidebar or in the settings
+        target: Config.options.ai
+        function onAssistantChanged() {
+            if (Config.options.ai.assistant === "openclaw" && root.models[OpenClaw.modelId])
+                root.setModel(OpenClaw.modelId, false, true);
+        }
     }
 
     function guessModelLogo(model) {

@@ -9,7 +9,8 @@ RippleButton {
 
     property bool showPing: false
 
-    property bool aiChatEnabled: Config.options.policies.ai !== 0
+    property bool aiChatEnabled: Config.options.policies.ai !== 0 && Assistant.choice !== "none"
+    readonly property bool hasAgent: Assistant.chosenAgentInstalled // (Hermes or OpenClaw)
     property bool translatorEnabled: Config.options.sidebar.translator.enable
     property bool animeEnabled: Config.options.policies.weeb !== 0
     visible: aiChatEnabled || translatorEnabled || animeEnabled
@@ -59,6 +60,13 @@ RippleButton {
                 root.showPing = true;
         }
     }
+    Connections { // OpenClaw did
+        target: Ai
+        function onResponseFinished() {
+            if (Assistant.choice === "openclaw" && !GlobalStates.sidebarLeftOpen)
+                root.showPing = true;
+        }
+    }
 
     Item {
         id: distroIcon
@@ -68,14 +76,14 @@ RippleButton {
 
         CustomIcon {
             anchors.fill: parent
-            visible: !Hermes.available
+            visible: !root.hasAgent
             source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
             colorize: true
             color: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colOnLayer0
         }
-        MaterialSymbol { // With Hermes the sidebar is Hermes: its brain, as on the sidebar's tab
+        MaterialSymbol { // With an agent the sidebar is the agent: its brain, as on the sidebar's tab
             anchors.centerIn: parent
-            visible: Hermes.available
+            visible: root.hasAgent
             text: "neurology"
             iconSize: 22
             color: Appearance.hasAccent ? Appearance.accent : Appearance.colors.colOnLayer0

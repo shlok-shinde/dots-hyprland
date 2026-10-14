@@ -142,6 +142,13 @@ Singleton {
 
     // ---- Public API ---------------------------------------------------------
 
+    // Look for Hermes again (the sidebar just installed it)
+    function recheck() {
+        if (root.available || findBinary.running || findGateway.running)
+            return;
+        findBinary.running = true;
+    }
+
     // Bring Hermes up (and the last conversation back). Cheap to call again.
     function start() {
         if (!root.available || !root.checked || root.starting)

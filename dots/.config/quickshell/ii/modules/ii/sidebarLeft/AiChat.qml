@@ -397,8 +397,10 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 z: 2
                 shown: Ai.messageIDs.length === 0
                 icon: "neurology"
-                title: Translation.tr("Large language models")
-                description: Translation.tr("Type /key to get started with online models\nCtrl+O to expand sidebar\nCtrl+P to pin sidebar\nCtrl+D to detach sidebar")
+                readonly property bool openclaw: Ai.getModel()?.api_format === "openclaw"
+                title: openclaw ? "OpenClaw" : Translation.tr("Large language models")
+                description: openclaw ? Translation.tr("Your agent, with its tools,\nmemory and skills\nCtrl+O to expand sidebar\nCtrl+P to pin sidebar\nCtrl+D to detach sidebar")
+                    : Translation.tr("Type /key to get started with online models\nCtrl+O to expand sidebar\nCtrl+P to pin sidebar\nCtrl+D to detach sidebar")
                 shape: MaterialShape.Shape.PixelCircle
             }
 
@@ -754,7 +756,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 }
 
                 ApiInputBoxIndicator {
-                    // Tool indicator
+                    // Tool indicator (none for an agent that brings its own: OpenClaw)
+                    visible: Ai.getModel()?.api_format !== "openclaw"
                     icon: "service_toolbox"
                     text: Ai.currentTool.charAt(0).toUpperCase() + Ai.currentTool.slice(1)
                     tooltipText: Translation.tr("Current tool: %1\nSet it with %2tool TOOL").arg(Ai.currentTool).arg(root.commandPrefix)
