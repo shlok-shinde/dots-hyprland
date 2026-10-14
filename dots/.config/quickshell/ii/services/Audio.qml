@@ -17,6 +17,7 @@ Singleton {
     property PwNode sink: Pipewire.defaultAudioSink
     property PwNode source: Pipewire.defaultAudioSource
     readonly property real hardMaxValue: 2.00 // People keep joking about setting volume to 5172% so...
+    readonly property real maxVolume: 1.5 // How far the keys and scrolling go (past 100%, like wpctl's -l 1.5)
     property string audioTheme: Config.options.sounds.theme
     property real value: sink?.audio.volume ?? 0
     
@@ -58,12 +59,12 @@ Singleton {
         Audio.source.audio.muted = !Audio.source.audio.muted
     }
 
-    // Finer below 10%. limit: the volume keys may go past 100% (to 150%, as wpctl's -l 1.5)
+    // Finer below 10%. limit: up to maxVolume (150%); a volume already above it isn't lowered
     function volumeStep() {
         return Audio.value < 0.1 ? 0.01 : Config.options.audio.volumeStep / 100;
     }
 
-    function incrementVolume(limit = 1) {
+    function incrementVolume(limit = root.maxVolume) {
         Audio.sink.audio.volume = Math.min(Math.max(limit, Audio.sink.audio.volume), Audio.sink.audio.volume + root.volumeStep());
     }
     
@@ -77,7 +78,7 @@ Singleton {
 
         function volumeUp(): void {
             if (root.ready)
-                root.incrementVolume(1.5);
+                root.incrementVolume();
             else // PipeWire's output isn't here yet (just after the shell starts)
                 Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", `${Config.options.audio.volumeStep}%+`, "-l", "1.5"]);
         }
