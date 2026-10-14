@@ -12,12 +12,16 @@ Item {
     required property var scopeRoot
     property int sidebarPadding: 10
     anchors.fill: parent
-    property bool aiChatEnabled: Config.options.policies.ai !== 0
+    property bool aiChatEnabled: Config.options.policies.ai !== 0 && Assistant.choice !== "none"
+    // The AI page's tab: the agent's name, once it's there
+    property string aiChatName: Assistant.needsSetup ? Translation.tr("Assistant")
+        : Assistant.choice === "hermes" ? "Hermes"
+        : Assistant.choice === "openclaw" ? "OpenClaw" : Translation.tr("Intelligence")
     property bool translatorEnabled: Config.options.sidebar.translator.enable
     property bool animeEnabled: Config.options.policies.weeb !== 0
     property bool animeCloset: Config.options.policies.weeb === 2
     property var tabButtonList: [
-        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Hermes.available ? "Hermes" : Translation.tr("Intelligence")}] : []),
+        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": root.aiChatName}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : [])
     ]
@@ -94,15 +98,20 @@ Item {
 
         Component {
             id: aiChat
-            Loader { // Hermes Agent when it is installed, else the built-in LLM chat
+            Loader { // The picker until an agent is set up; then Hermes' page, or the chat with OpenClaw's gateway
                 id: aiChatLoader
-                active: Hermes.checked
-                sourceComponent: Hermes.available ? hermesChatPage : aiChatPage
+                active: Assistant.checked
+                sourceComponent: Assistant.needsSetup ? assistantChooserPage
+                    : Assistant.choice === "hermes" ? hermesChatPage : aiChatPage
                 onActiveFocusChanged: {
-                    if (activeFocus && item)
+                    if (activeFocus && item?.inputField)
                         item.inputField.forceActiveFocus();
                 }
             }
+        }
+        Component {
+            id: assistantChooserPage
+            AssistantChooser {}
         }
         Component {
             id: hermesChatPage

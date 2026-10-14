@@ -228,6 +228,42 @@ ContentPage {
                 }
             }
 
+            // The sidebar's agent (one that isn't installed yet: the sidebar sets it up)
+            ColumnLayout {
+                ContentSubsectionLabel {
+                    text: Translation.tr("Sidebar assistant")
+                }
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.ai.assistant
+                    onSelected: newValue => {
+                        Config.options.ai.assistant = newValue;
+                    }
+                    options: [
+                        {
+                            displayName: "Hermes Agent",
+                            icon: "neurology",
+                            value: "hermes"
+                        },
+                        {
+                            displayName: "OpenClaw",
+                            icon: "pets",
+                            value: "openclaw"
+                        },
+                        {
+                            displayName: Translation.tr("None"),
+                            icon: "block",
+                            value: "none"
+                        },
+                        {
+                            displayName: Translation.tr("Ask"),
+                            icon: "help",
+                            value: ""
+                        }
+                    ]
+                }
+            }
+
             // Weeb policy
             ColumnLayout {
 
