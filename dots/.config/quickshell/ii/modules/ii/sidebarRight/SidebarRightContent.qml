@@ -132,7 +132,8 @@ Item {
             if (!shown) {
                 Bluetooth.defaultAdapter.discovering = false;
             } else {
-                BluetoothStatus.setEnabled(true, true);
+                Bluetooth.defaultAdapter.enabled = true;
+                Bluetooth.defaultAdapter.discovering = true;
             }
         }
     }
