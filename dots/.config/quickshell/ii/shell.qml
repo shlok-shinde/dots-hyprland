@@ -32,6 +32,7 @@ ShellRoot {
         Updates.load()
         LiquidGlass.load()
         KeySteps.load()
+        BluetoothStatus.load()
     }
 
 
