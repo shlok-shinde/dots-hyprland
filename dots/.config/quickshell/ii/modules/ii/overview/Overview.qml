@@ -215,7 +215,7 @@ Scope {
                 GlobalStates.superReleaseMightTrigger = true;
                 return;
             }
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            overviewScope.toggleAppDrawer(); // SUPER: the apps, like the dock's apps button
         }
     }
     GlobalShortcut {
