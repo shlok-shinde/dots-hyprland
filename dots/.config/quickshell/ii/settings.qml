@@ -55,6 +55,16 @@ ApplicationWindow {
             component: "modules/settings/ServicesConfig.qml"
         },
         {
+            name: Translation.tr("Shortcuts"),
+            icon: "keyboard",
+            component: "modules/settings/ShortcutsConfig.qml"
+        },
+        {
+            name: Translation.tr("Default apps"),
+            icon: "apps",
+            component: "modules/settings/DefaultAppsConfig.qml"
+        },
+        {
             name: Translation.tr("Advanced"),
             icon: "construction",
             component: "modules/settings/AdvancedConfig.qml"
