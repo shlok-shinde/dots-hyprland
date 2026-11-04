@@ -82,21 +82,19 @@ ContentPage {
                             implicitHeight: 34
                             implicitWidth: Math.max(keyText.implicitWidth + 28, 90)
                             buttonRadius: Appearance.rounding.full
+                            focusPolicy: Qt.NoFocus // the page keeps the keys; a click on it again cancels
                             toggled: waiting
                             colBackground: Appearance.colors.colSecondaryContainer
                             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                            onClicked: waiting ? page.cancelCapture() : page.beginCapture(row.modelData.keys, keyButton)
+                            onClicked: waiting ? page.cancelCapture() : page.beginCapture(row.modelData.keys)
                             contentItem: StyledText {
                                 id: keyText
                                 horizontalAlignment: Text.AlignHCenter
                                 font.family: Appearance.font.family.monospace
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 color: keyButton.waiting ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-                                text: keyButton.waiting ? Translation.tr("Press keys…") : (row.current === "" ? Translation.tr("Off") : row.current)
+                                text: keyButton.waiting ? Translation.tr("Press keys…") : (row.current === "" ? Translation.tr("Off") : ShortcutSettings.label(row.current))
                             }
-                            Keys.onPressed: event => page.keyPressed(event)
-                            Keys.onReleased: event => page.keyReleased(event)
-                            onActiveFocusChanged: if (!activeFocus && waiting) page.cancelCapture()
                         }
                         RippleButton {
                             visible: row.changed
@@ -111,7 +109,7 @@ ContentPage {
                                 color: Appearance.colors.colOnSecondaryContainer
                             }
                             StyledToolTip {
-                                text: Translation.tr("Back to %1").arg(row.modelData.keys)
+                                text: Translation.tr("Back to %1").arg(ShortcutSettings.label(row.modelData.keys))
                             }
                         }
                     }
@@ -132,13 +130,17 @@ ContentPage {
     // ── capturing keys ─────────────────────────────────────────────────────
     property bool sawKey: false // a non-modifier key went down during this capture
 
-    function beginCapture(defaultKeys, button) {
+    // The page takes the keys meanwhile
+    function beginCapture(defaultKeys) {
         page.capturing = defaultKeys;
         page.sawKey = false;
         ShortcutSettings.startCapture();
         captureTimeout.restart();
-        button.forceActiveFocus();
+        page.forceActiveFocus();
     }
+    Keys.onPressed: event => page.keyPressed(event)
+    Keys.onReleased: event => page.keyReleased(event)
+    onActiveFocusChanged: if (!activeFocus) page.cancelCapture()
     function cancelCapture() {
         if (page.capturing === "") return;
         page.capturing = "";

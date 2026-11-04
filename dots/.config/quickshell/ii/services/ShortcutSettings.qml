@@ -37,6 +37,11 @@ Singleton {
         return [...["SUPER", "CTRL", "SHIFT", "ALT"].filter(m => mods[m]), key].join(" + ");
     }
 
+    // As shown: a modifier on its own ("SUPER + SUPER_L") is just its name
+    function label(combo) {
+        return `${combo}`.replace(/^(SUPER|CTRL|SHIFT|ALT) \+ (Super|Control|Shift|Alt)_[LR]$/i, "$1");
+    }
+
     function chosenKeys(defaultKeys) { // undefined when it keeps its default
         return root.keys[root.normalize(defaultKeys)];
     }

@@ -75,8 +75,11 @@ end
 function M.finish()
     if originalBind then hl.bind = originalBind end
 
-    -- Where the Settings page waits for new keys: no shortcut runs meanwhile
-    hl.define_submap("nl_capture", function() end)
+    -- Where the Settings page waits for new keys: no shortcut runs meanwhile. (A
+    -- submap needs a bind to exist: a way out, should the page not take it back.)
+    hl.define_submap("nl_capture", function()
+        hl.bind("CTRL + SUPER + SHIFT + ALT + Escape", hl.dsp.submap("reset"))
+    end)
 
     local entries = {}
     for _, bind in ipairs(seen) do
