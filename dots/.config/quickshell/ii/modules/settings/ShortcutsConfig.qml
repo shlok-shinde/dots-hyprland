@@ -129,11 +129,13 @@ ContentPage {
 
     // ── capturing keys ─────────────────────────────────────────────────────
     property bool sawKey: false // a non-modifier key went down during this capture
+    property var held: []       // modifiers whose keys are down (some sources don't set event.modifiers)
 
     // The page takes the keys meanwhile
     function beginCapture(defaultKeys) {
         page.capturing = defaultKeys;
         page.sawKey = false;
+        page.held = [];
         ShortcutSettings.startCapture();
         captureTimeout.restart();
         page.forceActiveFocus();
@@ -159,14 +161,16 @@ ContentPage {
     }
     Component.onDestruction: page.cancelCapture()
 
-    readonly property var modifierKeys: [Qt.Key_Meta, Qt.Key_Super_L, Qt.Key_Super_R, Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_AltGr, Qt.Key_Hyper_L, Qt.Key_Hyper_R]
+    readonly property var modifierKeys: ({
+        [Qt.Key_Meta]: "SUPER", [Qt.Key_Super_L]: "SUPER", [Qt.Key_Super_R]: "SUPER", [Qt.Key_Hyper_L]: "SUPER", [Qt.Key_Hyper_R]: "SUPER",
+        [Qt.Key_Control]: "CTRL", [Qt.Key_Shift]: "SHIFT", [Qt.Key_Alt]: "ALT", [Qt.Key_AltGr]: "ALT",
+    })
     function modifierPrefix(modifiers) {
-        const mods = [];
-        if (modifiers & Qt.MetaModifier) mods.push("SUPER");
-        if (modifiers & Qt.ControlModifier) mods.push("CTRL");
-        if (modifiers & Qt.ShiftModifier) mods.push("SHIFT");
-        if (modifiers & Qt.AltModifier) mods.push("ALT");
-        return mods;
+        const on = {
+            SUPER: (modifiers & Qt.MetaModifier) !== 0, CTRL: (modifiers & Qt.ControlModifier) !== 0,
+            SHIFT: (modifiers & Qt.ShiftModifier) !== 0, ALT: (modifiers & Qt.AltModifier) !== 0,
+        };
+        return ["SUPER", "CTRL", "SHIFT", "ALT"].filter(m => on[m] || page.held.includes(m));
     }
     // Qt key -> the key name Hyprland takes (xkb's)
     readonly property var keyNames: ({
@@ -189,7 +193,11 @@ ContentPage {
     function keyPressed(event) {
         if (page.capturing === "") return;
         event.accepted = true;
-        if (page.modifierKeys.includes(event.key)) return; // wait for the key, or the release
+        const modifier = page.modifierKeys[event.key];
+        if (modifier) { // wait for the key, or the release
+            if (!page.held.includes(modifier)) page.held = [...page.held, modifier];
+            return;
+        }
         const mods = page.modifierPrefix(event.modifiers);
         if (mods.length === 0 && event.key === Qt.Key_Escape) {
             page.cancelCapture();
@@ -204,9 +212,13 @@ ContentPage {
     }
     // SUPER pressed and let go on its own
     function keyReleased(event) {
-        if (page.capturing === "" || page.sawKey) return;
+        if (page.capturing === "") return;
+        const modifier = page.modifierKeys[event.key];
+        if (modifier) page.held = page.held.filter(m => m !== modifier);
+        if (page.sawKey) return;
         event.accepted = true;
         if (event.key === Qt.Key_Meta || event.key === Qt.Key_Super_L || event.key === Qt.Key_Super_R)
-            page.finishCapture(event.key === Qt.Key_Super_R ? "SUPER + SUPER_R" : "SUPER + SUPER_L");
+            // Qt often names both Meta: the right one is evdev key 126 (+8 under xkb)
+            page.finishCapture(event.key === Qt.Key_Super_R || event.nativeScanCode === 134 ? "SUPER + SUPER_R" : "SUPER + SUPER_L");
     }
 }

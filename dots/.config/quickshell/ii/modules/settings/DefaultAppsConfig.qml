@@ -65,7 +65,7 @@ ContentPage {
                 visible: slot.keys !== ""
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
-                text: Translation.tr("Opens with %1").arg(slot.keys)
+                text: Translation.tr("Opens with %1").arg(ShortcutSettings.label(slot.keys))
             }
             ConfigSelectionArray {
                 currentValue: ShortcutSettings.appIds[slot.modelData.name] ?? (ShortcutSettings.apps[slot.modelData.name] ? "custom" : "")
