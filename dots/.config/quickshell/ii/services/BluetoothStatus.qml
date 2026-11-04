@@ -16,20 +16,37 @@ Singleton {
     readonly property int activeDeviceCount: Bluetooth.defaultAdapter?.devices.values.filter(device => device.connected).length ?? 0
     readonly property bool connected: Bluetooth.devices.values.some(d => d.connected)
 
-    // BlueZ doesn't save whether Bluetooth is on and powers it on at boot (AutoEnable),
-    // so remember it here, whichever app switches it, and restore it once per login
+    // BlueZ doesn't save whether Bluetooth is on and powers on every adapter it finds
+    // (AutoEnable): at boot, and on waking from sleep, when a USB adapter comes back as
+    // a new one. So remember it here, whichever app switches it, and put it back for a
+    // few seconds after each of those: a change then is BlueZ's, not the user's.
     property bool restored: false
+    property real settleUntil: 0
+    readonly property int settleMs: 10000
     function restoreEnabled() {
-        if (root.restored || !Persistent.ready || !Bluetooth.defaultAdapter) return;
-        root.restored = true;
-        if (!Persistent.isNewHyprlandInstance) // The shell restarted: keep what it is now
-            Persistent.states.bluetooth.enabled = Bluetooth.defaultAdapter.enabled;
-        else if (!Persistent.states.bluetooth.enabled)
+        if (!Persistent.ready || !Bluetooth.defaultAdapter) return;
+        if (!root.restored) {
+            root.restored = true;
+            if (!Persistent.isNewHyprlandInstance) { // The shell restarted: keep what it is now
+                Persistent.states.bluetooth.enabled = Bluetooth.defaultAdapter.enabled;
+                return;
+            }
+        }
+        root.settleUntil = Date.now() + root.settleMs;
+        root.applySaved();
+    }
+    function applySaved() {
+        if (!Persistent.states.bluetooth.enabled && Bluetooth.defaultAdapter?.enabled)
             Bluetooth.defaultAdapter.enabled = false;
     }
     function load() {} // (shell.qml: so it restores at login with no bar to show it)
     Component.onCompleted: restoreEnabled()
-    onAvailableChanged: restoreEnabled()
+    Connections {
+        target: Bluetooth
+        function onDefaultAdapterChanged() { // found at boot, back after sleep, plugged in
+            Qt.callLater(root.restoreEnabled);
+        }
+    }
     Connections {
         target: Persistent
         function onReadyChanged() {
@@ -40,7 +57,26 @@ Singleton {
         target: Bluetooth.defaultAdapter
         function onEnabledChanged() {
             if (!root.restored) return;
-            Persistent.states.bluetooth.enabled = Bluetooth.defaultAdapter.enabled;
+            if (Date.now() - root.lastTick > 20000) // woke up before the timer could notice
+                root.restoreEnabled();
+            else if (Date.now() < root.settleUntil)
+                root.applySaved();
+            else
+                Persistent.states.bluetooth.enabled = Bluetooth.defaultAdapter.enabled;
+        }
+    }
+    // Timers stop while the computer sleeps: a long gap between ticks is a wake-up,
+    // in case the adapter came back as the same one
+    property real lastTick: Date.now()
+    Timer {
+        running: root.restored
+        repeat: true
+        interval: 5000
+        onTriggered: {
+            const now = Date.now();
+            if (now - root.lastTick > 20000)
+                root.restoreEnabled();
+            root.lastTick = now;
         }
     }
 

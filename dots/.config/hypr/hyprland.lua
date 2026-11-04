@@ -17,8 +17,11 @@ require("hyprland.execs")
 require("hyprland.general")
 require("hyprland.rules")
 require("hyprland.colors")
+local shortcuts = require("hyprland.shortcuts") -- Settings > Shortcuts, Default apps
+shortcuts.begin()
 require("hyprland.keybinds")
 require("hyprland.liquidglass")
+shortcuts.finish()
 
 -- Custom configurations --
 if is_file_exists(HOME .. "/.config/hypr/custom/execs.lua") then
