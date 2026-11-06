@@ -10,9 +10,10 @@ import Quickshell
 import Quickshell.Io
 
 /**
- * Hermes Agent (Nous Research) in the left sidebar. Runs Hermes' own UI
- * backend (tui_gateway, what its TUI, desktop app and dashboard talk to) and
- * speaks its JSON-RPC over stdio, one message per line. So the sidebar gets
+ * Hermes Agent (Nous Research) in the left sidebar. Attaches to Hermes' own
+ * gateway (what its TUI, desktop app and dashboard talk to, one per profile)
+ * through scripts/ai/hermes-bridge.py and speaks its JSON-RPC over the
+ * bridge's stdio, one message per line. So the sidebar gets
  * what those get: every slash command, the agent's questions (approvals,
  * clarify, sudo and secrets), sessions. Hermes brings its own provider, tools,
  * memory and skills; each chat is a Hermes session (`hermes sessions`), and
@@ -27,7 +28,8 @@ Singleton {
     property bool checked: false
     property bool available: false
     property string binary: "hermes"
-    property var gatewayCommand: [] // how this installation runs tui_gateway.entry
+    property string subscriptionId: "" // this view's subscription to the open chat's events
+    property var gatewayCommand: [] // runs scripts/ai/hermes-bridge.py on the installation's Python
 
     // The gateway and the chat
     readonly property bool running: gateway.running
@@ -78,13 +80,17 @@ Singleton {
                     return;
                 }
                 root.binary = path;
-                root.gatewayCommand = [path, "--run-module", "tui_gateway.entry"];
                 findGateway.running = true;
             }
         }
     }
 
-    // The installation's own answer to "how do I run this module" (its launcher's machine interface)
+    // Hermes runs one gateway per profile and its apps attach to it over a
+    // WebSocket (it refuses a second, private one). scripts/ai/hermes-bridge.py
+    // attaches the same way and relays it as the line protocol below. It runs on
+    // the installation's own Python, taken from its launcher's machine interface
+    // (`--print-runtime-command`: [python, "-I", "-c", "...sys.path.insert(0, '<source root>')..."]).
+    readonly property string bridgePath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/ai/hermes-bridge.py`)
     Process {
         id: findGateway
         command: [root.binary, "--print-runtime-command", "--module", "tui_gateway.entry"]
@@ -92,9 +98,12 @@ Singleton {
             onStreamFinished: {
                 try {
                     const argv = JSON.parse(text);
-                    if (Array.isArray(argv) && argv.length > 0)
-                        root.gatewayCommand = argv;
+                    const sourceRoot = /sys\.path\.insert\(0, '([^']+)'\)/.exec(argv[argv.length - 1] ?? "");
+                    if (Array.isArray(argv) && argv.length > 0 && sourceRoot)
+                        root.gatewayCommand = [argv[0], "-I", root.bridgePath, sourceRoot[1]];
                 } catch (e) {}
+                if (root.gatewayCommand.length === 0) // an install whose launcher doesn't say: its usual place
+                    root.gatewayCommand = ["bash", "-c", `exec "$HOME/.hermes/hermes-agent/venv/bin/python" -I "$1" "$HOME/.hermes/hermes-agent"`, "hermes-bridge", root.bridgePath];
                 root.checked = true;
             }
         }
@@ -195,7 +204,9 @@ Singleton {
         });
         root.request("prompt.submit", {
             session_id: root.sessionId,
-            text: text
+            text: text,
+            submission_id: root.newId(), // the gateway admits each prompt once by this
+            queued: true
         }, (result, error) => {
             if (error) {
                 entry.queued = false;
@@ -248,9 +259,7 @@ Singleton {
             root.addNotice(Translation.tr("That's the chat you're in: start a new one first (%1new)").arg("/"));
             return;
         }
-        root.request("session.delete", {
-            session_id: id
-        }, (result, error) => {
+        root.mutate(id, "delete", {}, true, (result, error) => {
             if (error) {
                 root.addNotice(Translation.tr("Couldn't delete that chat: %1").arg(error.message ?? ""));
                 return;
@@ -405,17 +414,15 @@ Singleton {
             root.setReasoning(arg);
             return;
         case "title":
-            root.request("session.title", arg.length > 0 ? {
-                session_id: root.sessionId,
+            if (arg.length === 0)
+                return root.addNotice(root.sessionTitle.length > 0 ? Translation.tr("Title: %1").arg(root.sessionTitle) : Translation.tr("This chat has no title yet"));
+            root.mutate(root.sessionId, "rename", {
                 title: arg
-            } : {
-                session_id: root.sessionId
-            }, (result, error) => {
+            }, false, (result, error) => {
                 if (error)
                     return root.addNotice(Translation.tr("/title: %1").arg(error.message ?? ""));
-                if (arg.length > 0)
-                    root.sessionTitle = result?.title ?? arg;
-                root.addNotice((result?.title ?? "").length > 0 ? Translation.tr("Title: %1").arg(result.title) : Translation.tr("This chat has no title yet"));
+                root.sessionTitle = result?.title ?? arg;
+                root.addNotice(Translation.tr("Title: %1").arg(root.sessionTitle));
             });
             return;
         case "stop":
@@ -441,15 +448,12 @@ Singleton {
             });
             return;
         case "branch":
-            root.request("session.branch", {
-                session_id: root.sessionId,
-                name: arg
-            }, (result, error) => {
-                if (error || !result?.session_id)
+            root.mutate(root.sessionId, "branch", arg.length > 0 ? {
+                title: arg
+            } : {}, true, (result, error) => {
+                if (error || !result?.branched_session_id)
                     return root.addNotice(Translation.tr("/branch: %1").arg(error?.message ?? ""));
-                root.switchTo(result.session_id, result.stored_session_id, result.info ?? {});
-                root.sessionTitle = result.title ?? "";
-                root.addNotice(Translation.tr("Branched into a new chat: %1").arg(result.title ?? ""));
+                root.resumeSession(result.branched_session_id, false, Translation.tr("Branched into a new chat: %1").arg(result.title ?? arg));
             });
             return;
         case "copy":
@@ -731,8 +735,9 @@ Singleton {
                 return;
             }
             root.clearEntries();
-            root.switchTo(result.session_id, result.stored_session_id, result.info ?? {});
-            root.closeSession(previous);
+            const previousSubscription = root.subscriptionId;
+            root.switchTo(result.session_id, result.stored_session_id, result.info ?? {}, result.subscription_id);
+            root.closeSession(previous, previousSubscription);
             root.sessionTitle = "";
             if (title.length > 0)
                 root.runCommand(`/title ${title}`);
@@ -740,8 +745,9 @@ Singleton {
         });
     }
 
-    // quiet: reopening the last chat at startup; if it is gone, just start fresh
-    function resumeSession(id, quiet) {
+    // quiet: reopening the last chat at startup; if it is gone, just start fresh.
+    // notice: said once the chat is open (opening it clears the transcript).
+    function resumeSession(id, quiet, notice) {
         root.starting = true;
         root.ready = false;
         const previous = root.sessionId;
@@ -759,17 +765,21 @@ Singleton {
                 return;
             }
             root.clearEntries();
-            root.switchTo(result.session_id, result.resumed ?? id, result.info ?? {});
+            const previousSubscription = root.subscriptionId;
+            root.switchTo(result.session_id, result.stored_session_id ?? result.resumed ?? id, result.info ?? {}, result.subscription_id);
             if (previous !== result.session_id)
-                root.closeSession(previous);
+                root.closeSession(previous, previousSubscription);
             root.sessionTitle = result.info?.title ?? "";
             root.replay(result.messages ?? []);
+            if (notice)
+                root.addNotice(notice);
             root.becomeReady();
         });
     }
 
-    function switchTo(liveId, storedId, info) {
+    function switchTo(liveId, storedId, info, subscription) {
         root.sessionId = liveId;
+        root.subscriptionId = subscription ?? "";
         root.storedSessionId = storedId ?? "";
         root.busy = false;
         root.activity = "";
@@ -778,11 +788,48 @@ Singleton {
         sessionFile.setText(root.storedSessionId);
     }
 
-    function closeSession(liveId) {
-        if (liveId && liveId.length > 0 && liveId !== root.sessionId)
-            root.request("session.close", {
-                session_id: liveId
+    // Stop following the chat we left (the gateway keeps it; other apps may be in it)
+    function closeSession(liveId, subscription) {
+        if (liveId && liveId.length > 0 && liveId !== root.sessionId && subscription && subscription.length > 0)
+            root.request("session.detach", {
+                session_id: liveId,
+                subscription_id: subscription
             });
+    }
+
+    // Renames, branches and deletes are revision-fenced: read the chat's current
+    // revision (and turn generation), then change it. A rename takes no generation.
+    function mutate(id, operation, payload, withGeneration, callback) {
+        root.request("session.resume", {
+            session_id: id
+        }, (snapshot, error) => {
+            if (error || !snapshot)
+                return callback(null, error ?? {
+                    message: Translation.tr("no such chat")
+                });
+            const params = {
+                session_id: id,
+                request_id: root.newId(),
+                expected_revision: snapshot.revision,
+                operation: operation,
+                payload: payload
+            };
+            if (withGeneration)
+                params.expected_generation = snapshot.execution_generation;
+            if (snapshot.subscription_id && id !== root.sessionId) // that read followed the chat: let go
+                root.request("session.detach", {
+                    session_id: snapshot.session_id ?? id,
+                    subscription_id: snapshot.subscription_id
+                });
+            root.request("session.mutate", params, callback);
+        });
+    }
+
+    function newId() { // a v4 UUID
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+            const r = Math.floor(Math.random() * 16);
+            return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
     }
 
     function becomeReady() {
@@ -800,6 +847,7 @@ Singleton {
         root.busy = false;
         root.activity = "";
         root.sessionId = "";
+        root.subscriptionId = "";
         root.pendingRequests = ({});
         root.finishEntries();
         const why = root.stderrTail.length > 0 ? `\n${root.stderrTail}` : "";
@@ -1182,8 +1230,23 @@ Singleton {
     }
 
     // A resumed chat, as Hermes stored it. Its own notes to the model show as notices
+    // A stored message's text: `text` in Hermes' display form, `content` (a
+    // string, or a list of parts) in its stored form, which session.resume sends
+    function messageText(message) {
+        if (typeof message.text === "string")
+            return message.text;
+        const content = message.content;
+        if (typeof content === "string")
+            return content;
+        if (Array.isArray(content))
+            return content.map(part => typeof part === "string" ? part : (part?.text ?? "")).join("");
+        return "";
+    }
+
     function replay(messages) {
+        const shownCalls = {}; // tool calls shown from their assistant message
         for (const message of messages) {
+            const text = root.messageText(message);
             switch (message.display_kind ?? "") {
             case "hidden":
                 continue;
@@ -1191,7 +1254,7 @@ Singleton {
                 root.addNotice(Translation.tr("Hermes picked up a turn that was cut off"));
                 continue;
             case "model_switch": {
-                const model = (message.text ?? "").match(/changed to (\S+) via provider (\S+)/);
+                const model = text.match(/changed to (\S+) via provider (\S+)/);
                 root.addNotice(model ? Translation.tr("Model for this chat: %1 (%2)").arg(model[1]).arg(model[2]) : Translation.tr("The model changed"));
                 continue;
             }
@@ -1199,12 +1262,12 @@ Singleton {
                 root.addNotice(message.display_metadata?.display_text ?? Translation.tr("A background process finished"));
                 continue;
             case "failed_turn":
-                root.addNotice(message.text ?? "");
+                root.addNotice(text);
                 continue;
             case "steer":
                 root.addEntry({
                     kind: "user",
-                    text: (message.text ?? "").replace(/^\[OUT-OF-BAND USER MESSAGE[^\]]*\]\s*/, ""),
+                    text: text.replace(/^\[OUT-OF-BAND USER MESSAGE[^\]]*\]\s*/, ""),
                     steered: true,
                     done: true
                 });
@@ -1214,22 +1277,43 @@ Singleton {
             case "user":
                 root.addEntry({
                     kind: "user",
-                    text: message.text ?? "",
+                    text: text,
                     done: true
                 });
                 break;
             case "assistant":
-                if ((message.text ?? "").length > 0 || (message.reasoning ?? "").length > 0)
+                if (text.length > 0 || (message.reasoning ?? "").length > 0)
                     root.addEntry({
                         kind: "assistant",
-                        text: message.text ?? "",
+                        text: text,
                         thought: message.reasoning ?? "",
                         done: true
                     });
+                for (const call of message.tool_calls ?? []) { // the stored form: calls ride on the message
+                    const name = call.function?.name ?? call.name ?? "";
+                    shownCalls[call.id ?? ""] = true;
+                    if (name === "clarify" || name === "todo")
+                        continue;
+                    let args = call.function?.arguments ?? call.arguments ?? {};
+                    try {
+                        if (typeof args === "string")
+                            args = JSON.parse(args);
+                    } catch (e) {}
+                    root.addEntry({
+                        kind: "tool",
+                        toolCallId: call.id ?? "",
+                        name: name,
+                        title: name,
+                        toolKind: root.toolKindOf(name),
+                        status: "completed",
+                        input: root.argsText(args),
+                        done: true
+                    });
+                }
                 break;
             case "tool":
-                if (message.name === "clarify" || message.name === "todo")
-                    break;
+                if (shownCalls[message.tool_call_id ?? ""] || message.name === "clarify" || message.name === "todo")
+                    break; // its call is already shown (or it is a question, a list)
                 root.addEntry({
                     kind: "tool",
                     toolCallId: message.tool_call_id ?? "",
