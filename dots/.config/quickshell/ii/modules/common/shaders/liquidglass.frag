@@ -24,6 +24,9 @@ layout(std140, binding = 0) uniform buf {
     float dispersion;  // chromatic split at the rim
     float shadow;      // soft drop shadow under the glass
     float adaptiveBoost; // light mode: how hard dark backdrops are lifted (readability)
+    float highlightDirection; // where the rim catches light: 0 all round, 1 the top, 2 the top left
+    float darkEdge;      // alpha of the thin dark line inside the rim (0.88 dark mode, 0.43 light)
+    float nearReflection; // how much the rim takes its colour from just outside the glass
 };
 layout(binding = 1) uniform sampler2D mask;
 layout(binding = 2) uniform sampler2D field;
@@ -72,6 +75,8 @@ void main() {
 
     // Refraction: the rim shows what lies just outside it, squeezed in; the
     // whole pane is a shallow magnifier
+    vec3 raw = backdrop(uv, px); // what is behind, before any toning
+
     vec2 offset = -inward * pow(slope, 1.5) * refraction * px - (uv - 0.5) * bodyLens;
     vec3 color = vec3(backdrop(uv + offset * (1.0 + dispersion), px).r,
                       backdrop(uv + offset, px).g,
@@ -90,11 +95,32 @@ void main() {
     }
     color = mix(color, tint.rgb, tint.a);
 
-    // Light: no key light. The edge brightens where it reflects something
-    // bright just outside it, and a little is caught inside the curve
-    float env = smoothstep(0.30, 0.95, luma(texture(behind, uv - inward * 5.0 * px).rgb));
-    color += vec3(slope * slope * 0.06 * (0.3 + 0.7 * env));
-    color = mix(color, vec3(1.0), clamp(line * rim * (0.42 + 0.58 * env), 0.0, 1.0));
+    // Light, as in hyprglass. The rim is lit most along the top (or from the
+    // top left), takes the colour of what is behind and near it, brightening
+    // over bright content and nearly vanishing over black (Tahoe's rim:
+    // 1.45 luma + 3 chroma + 0.05), with a thin dark line inside it that
+    // shows on the sides (iOS 27).
+    vec2 nOut = -inward;
+    float lobe = 1.0, sideOn = 1.0;
+    if (highlightDirection > 1.5) {
+        const vec2 L = vec2(-0.70710678, -0.70710678);
+        sideOn = abs(dot(nOut, vec2(-L.y, L.x)));
+        lobe = max(1.0 - sideOn, 0.15) * (dot(nOut, L) < 0.0 ? 0.6 : 1.0);
+    } else if (highlightDirection > 0.5) {
+        sideOn = abs(nOut.x);
+        lobe = max(1.0 - sideOn, 0.15) * (nOut.y > 0.0 ? 0.6 : 1.0);
+    }
+    if (darkEdge > 0.001) {
+        float dir = highlightDirection < 0.5 ? 1.0 : mix(1.0, sideOn, 0.77);
+        color *= 1.0 - darkEdge * line * dir;
+    }
+    vec3 envC = texture(behind, uv - inward * 5.0 * px).rgb;
+    float env = smoothstep(0.30, 0.95, luma(envC));
+    color += vec3(slope * slope * 0.06 * (0.3 + 0.7 * env) * lobe);
+    vec3 src = mix(raw, envC, nearReflection);
+    float srcL = luma(src);
+    vec3 rimC = max(vec3(1.45 * srcL + 0.05) + 3.0 * (src - vec3(srcL)), 0.0);
+    color = mix(color, rimC, clamp(line * rim * lobe, 0.0, 1.0));
 
     fragColor = vec4(color * coverage, coverage) * qt_Opacity;
 }

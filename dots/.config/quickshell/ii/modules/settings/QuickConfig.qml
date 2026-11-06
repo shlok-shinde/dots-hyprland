@@ -304,6 +304,105 @@ ContentPage {
             }
         }
 
+        ContentSubsection {
+            visible: Config.options.appearance.liquidGlass.enable
+            title: Translation.tr("Click glow")
+            tooltip: Translation.tr("Light where glass is clicked or touched. Subtle is Apple's current look, Bright its first one")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.appearance.liquidGlass.pressGlow
+                onSelected: newValue => {
+                    Config.options.appearance.liquidGlass.pressGlow = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Off"),
+                        icon: "block",
+                        value: "off"
+                    },
+                    {
+                        displayName: Translation.tr("Subtle"),
+                        icon: "touch_app",
+                        value: "subtle"
+                    },
+                    {
+                        displayName: Translation.tr("Bright"),
+                        icon: "flare",
+                        value: "bright"
+                    }
+                ]
+            }
+        }
+
+        ContentSubsection {
+            visible: Config.options.appearance.liquidGlass.enable
+            title: Translation.tr("Highlights")
+            tooltip: Translation.tr("Where the rim of the glass catches light")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.appearance.liquidGlass.highlights
+                onSelected: newValue => {
+                    Config.options.appearance.liquidGlass.highlights = newValue;
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("All round"),
+                        icon: "crop_square",
+                        value: "none"
+                    },
+                    {
+                        displayName: Translation.tr("Top"),
+                        icon: "border_top",
+                        value: "top"
+                    },
+                    {
+                        displayName: Translation.tr("Diagonal"),
+                        icon: "north_west",
+                        value: "diagonal"
+                    }
+                ]
+            }
+        }
+
+        ConfigRow {
+            visible: Config.options.appearance.liquidGlass.enable
+            uniform: true
+            ConfigSwitch {
+                enabled: Config.options.appearance.liquidGlass.pressGlow !== "off"
+                buttonIcon: "blur_circular"
+                text: Translation.tr("Glow spreads")
+                checked: Config.options.appearance.liquidGlass.glowSpread
+                onCheckedChanged: {
+                    Config.options.appearance.liquidGlass.glowSpread = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("The click glow also lights nearby glass: other windows, the bar, the dock")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "line_style"
+                text: Translation.tr("Dark edge")
+                checked: Config.options.appearance.liquidGlass.darkEdge
+                onCheckedChanged: {
+                    Config.options.appearance.liquidGlass.darkEdge = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("A thin dark line inside the rim, so glass stands out over bright content")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "palette"
+                text: Translation.tr("Nearby colour")
+                checked: Config.options.appearance.liquidGlass.nearReflection
+                onCheckedChanged: {
+                    Config.options.appearance.liquidGlass.nearReflection = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Rims pick up the colour of what is near them, not only of what is behind")
+                }
+            }
+        }
+
         ConfigRow {
             visible: Config.options.appearance.liquidGlass.enable
             uniform: true

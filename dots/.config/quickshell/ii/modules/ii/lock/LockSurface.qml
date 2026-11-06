@@ -157,6 +157,9 @@ MouseArea {
                 tint: Qt.rgba(1, 1, 1, 0.18)
                 dispersion: 0.2
                 shadow: 0.45
+                highlightDirection: ({ "none": 0, "top": 1, "diagonal": 2 })[Config.options.appearance.liquidGlass.highlights] ?? 1
+                darkEdge: Config.options.appearance.liquidGlass.darkEdge ? 0.4 : 0 // light on the digits: they are thin
+                nearReflection: Config.options.appearance.liquidGlass.nearReflection ? 0.5 : 0
 
                 Text {
                     // Solid strokes: dot-matrix digits would each turn into a bead of glass
