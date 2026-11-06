@@ -104,6 +104,7 @@ PanelWindow {
         root.visible = false;
         while (stackView.depth > 1)
             stackView.pop();
+        popupBackground.animateSize = false;
         root.menuClosed();
     }
 
@@ -146,10 +147,16 @@ PanelWindow {
             Behavior on opacity {
                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
+            // Only between submenus: items an app sends just after the menu
+            // opened would otherwise wait behind a resize from the Pin row,
+            // and the menu could stay cut off there.
+            property bool animateSize: false
             Behavior on implicitHeight {
+                enabled: popupBackground.animateSize
                 animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
             }
             Behavior on implicitWidth {
+                enabled: popupBackground.animateSize
                 animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
             }
 
@@ -164,8 +171,9 @@ PanelWindow {
                 popEnter: NoAnim {}
                 popExit: NoAnim {}
 
-                implicitWidth: currentItem.implicitWidth
-                implicitHeight: currentItem.implicitHeight
+                implicitWidth: currentItem?.implicitWidth ?? 0
+                implicitHeight: currentItem?.implicitHeight ?? 0
+                onDepthChanged: popupBackground.animateSize = depth > 1 || popupBackground.animateSize
 
                 initialItem: SubMenu {
                     handle: root.trayItemMenuHandle

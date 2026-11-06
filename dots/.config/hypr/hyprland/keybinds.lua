@@ -15,6 +15,37 @@ hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"))
 hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
 hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
 
+-- SUPER on its own opens the apps when let go; not after SUPER + another key
+-- (SUPER+I, SUPER+E...), nor with a key already down. The key event comes
+-- before the binds, so this reaches the shell before the release does.
+-- Keycodes are xkb's (evdev + 8): 133 Super_L, 134 Super_R.
+SUPER_KEYCODES = SUPER_KEYCODES or { [133] = true, [134] = true }
+do
+    -- held: keycode -> when it went down; a release lost on the way (VT
+    -- switch, lock screen) stops counting after a while
+    local held, superClean = {}, false
+    hl.on("input.keyboard.key", function(keycode, time, state)
+        if state == 1 then
+            if SUPER_KEYCODES[keycode] then
+                superClean = true
+                for code, since in pairs(held) do
+                    if code ~= keycode and time - since < 10000 then superClean = false end
+                end
+            else
+                for code in pairs(held) do
+                    if SUPER_KEYCODES[code] then superClean = false end
+                end
+            end
+            held[keycode] = time
+        else
+            held[keycode] = nil
+            if SUPER_KEYCODES[keycode] and not superClean then
+                hl.dispatch(hl.dsp.global("quickshell:searchToggleReleaseInterrupt"))
+            end
+        end
+    end)
+end
+
 hl.bind("SUPER_L", hl.dsp.global("quickshell:workspaceNumber"), { ignore_mods = true, transparent = true })
 hl.bind("SUPER_R", hl.dsp.global("quickshell:workspaceNumber"), { ignore_mods = true, transparent = true })
 hl.bind("SUPER_L", hl.dsp.global("quickshell:workspaceNumber"),
