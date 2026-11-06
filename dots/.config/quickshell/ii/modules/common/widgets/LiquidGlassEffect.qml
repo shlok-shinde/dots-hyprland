@@ -24,6 +24,13 @@ Item {
     property color tint: Qt.rgba(0.04, 0.04, 0.05, 0.25)
     property real dispersion: 0.35
     property real shadow: 0.28
+    // The rim's light: 0 all round, 1 along the top, 2 from the top left; the
+    // dark line inside it (0.88 suits dark mode, 0.43 light); how much it takes
+    // the colour of what is just outside it. Plain values: the login screen
+    // uses this file without the shell's Config.
+    property int highlightDirection: 1
+    property real darkEdge: 0.88
+    property real nearReflection: 0.5
     // Read by the mapping onto the backdrop; bump it while an ancestor moves or scales
     property real mapTick: 0
 
@@ -105,6 +112,9 @@ Item {
         property vector4d tint: Qt.vector4d(root.tint.r, root.tint.g, root.tint.b, root.tint.a)
         property real dispersion: root.dispersion
         property real shadow: root.shadow
+        property real highlightDirection: root.highlightDirection
+        property real darkEdge: root.darkEdge
+        property real nearReflection: root.nearReflection
 
         fragmentShader: Qt.resolvedUrl("../shaders/liquidglass.frag.qsb")
     }

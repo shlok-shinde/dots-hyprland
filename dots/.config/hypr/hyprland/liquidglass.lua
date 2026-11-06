@@ -13,7 +13,7 @@ if is_file_exists(plugin) then
 end
 
 -- Settings > Liquid glass in the shell (on/off, Clear / Tinted, edge
--- highlights) and its light or dark mode, written by
+-- highlights, click glow, rim light) and its light or dark mode, written by
 -- quickshell/ii/services/LiquidGlass.qml
 local function shellSettings()
     local path = (os.getenv("XDG_STATE_HOME") or (HOME .. "/.local/state")) .. "/quickshell/user/generated/liquidglass.lua"
@@ -39,6 +39,15 @@ if hl.plugin.hyprglass then
         tinted = shell.tinted or 0,
         edge_highlight = shell.edge_highlight or 1,
         lens = shell.lens or 1,
+        -- Liquid Glass's press light: 0 off, 1 subtle, 2 bright; press_spill is
+        -- how much of it nearby glass catches
+        press_glow = shell.press_glow or 1,
+        press_spill = shell.press_spill or 0.5,
+        -- the rim: lit along the top (1), from the top left (2) or all round (0),
+        -- a thin dark line inside it, and colour from nearby content
+        highlight_direction = shell.highlight_direction or 1,
+        dark_edge = shell.dark_edge or 1,
+        near_reflection = shell.near_reflection or 0.5,
     })
 
     -- Shell panels get glass cut to whatever shape they draw. The background,

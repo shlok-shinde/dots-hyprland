@@ -154,6 +154,16 @@ Singleton {
                     property real edgeHighlight: 1.0
                     // Refraction across the whole pane, not only its rim (0 - 2)
                     property real refraction: 1.0
+                    // Light where glass is clicked or touched: "off", "subtle" (Apple
+                    // 26.1+) or "bright" (26.0). glowSpread: it reaches nearby glass too.
+                    property string pressGlow: "subtle"
+                    property bool glowSpread: true
+                    // Where the rim catches light: "none", "top" or "diagonal"
+                    property string highlights: "top"
+                    // A thin dark line just inside the rim, so glass reads over bright content
+                    property bool darkEdge: true
+                    // Rims take on the colour of what is near them, not only behind
+                    property bool nearReflection: true
                     // capsuleBar: the bar is see-through with each group its own glass
                     // capsule (false: one glass bar with a single border).
                     // modularSidebar: the right sidebar is separate glass modules, like

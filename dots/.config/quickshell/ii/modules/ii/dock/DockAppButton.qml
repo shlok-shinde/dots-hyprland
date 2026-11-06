@@ -23,6 +23,13 @@ DockButton {
     enabled: !isSeparator
     implicitWidth: isSeparator ? 1 : implicitHeight - topInset - bottomInset
 
+    // Liquid Glass controls give a little under the finger and spring back,
+    // with the compositor's click glow lighting them from the press point
+    scale: root.down ? 1.06 : 1
+    Behavior on scale {
+        SpringAnimation { spring: 5; damping: 0.32; epsilon: 0.002 }
+    }
+
     Connections {
         target: DesktopEntries
 
